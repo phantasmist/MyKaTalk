@@ -21,10 +21,11 @@ namespace MyKaTalk
         }
 
         //global var
+        const int BUF_SIZE = 512;
         const int NUMTCP = 10; //tcp 배열 개수
+
         Socket sock = null;   //서버 입장에서 socket, 클라이언트 입장에선 원서버로 구동
-        // mutable object + generic type
-        List<tcpEx> tcp = new List<tcpEx>(); //TcpClient Type의 List Object 선언
+        List<tcpEx> tcp = new List<tcpEx>(); // List: mutable + generic type
         //int currClientNum = 0; // 현재 선택된 클라이언트 tcp 인덱스 + 1
         TcpListener listen = null;
 
@@ -39,13 +40,36 @@ namespace MyKaTalk
         int serverPort = 9000;
         string connectIP = "127.0.0.1";
         int connectPort = 9000;
-        int operationMode = 0; // 0: server, 1: client
+        bool operationMode = true; // true: server, false: client
+
+        string sUID = "Noname";
+        string sPWD = "";
 
         //server mode client mode 전환이 가능해야 한다
 
         iniClass ini = new iniClass(@".\chat.ini");
 
-        const int BUF_SIZE = 512;
+        
+
+        private void frmMain_Load(object sender, EventArgs e)
+        {
+            int X = int.Parse(ini.GetPString("Location", "X", "0"));
+            int Y = int.Parse(ini.GetPString("Location", "Y", "0"));
+            Location = new Point(X, Y);
+            int SX = int.Parse(ini.GetPString("Size", "X", "459"));
+            int SY = int.Parse(ini.GetPString("Size", "Y", "472"));
+            int DIST = int.Parse(ini.GetPString("Size", "DIST", "200"));
+            Size = new Size(SX, SY);
+            splitContainer1.SplitterDistance = DIST;
+
+            serverPort = int.Parse(ini.GetPString("Operation", "serverPort", "9000"));
+            connectPort = int.Parse(ini.GetPString("Operation", "connectPort", "9000"));
+            connectIP = ini.GetPString("Operation", "connectIP", "127.0.0.1");
+            //실 적용 시에는 암호화 필수
+            sUID = ini.GetPString("Operation", "sUID", "USERNAME");
+            sPWD = ini.GetPString("Operation", "sPWD", "");
+
+        }
 
 
         //private void timer1_Tick(object sender, EventArgs e) //일정 시간 간격으로 텍스트 출력
@@ -83,39 +107,77 @@ namespace MyKaTalk
                 tbOutput.Text += str;
         }
 
-        //int getTcpIdx() //tcp list 중 선택된 인덱스 반환
-        //{
-        //    string str = sbClientList.Text;
-        //    for (int i = 0; i < currClientNum; i++)
-        //    {
-        //        if (tcp[i].Client.RemoteEndPoint.ToString() == str)
-        //        {
-        //            return i;
-        //        }
-        //    }
-        //    return -1; //error code
-        //}
+        //무명 메소드?
+        //요거 없으면 에러 발생함
+        delegate void cbAddLabel(string str);
+        void AddLabel(string str)
+        {
+            if (statusBar.InvokeRequired)
+            {
+                cbAddLabel cb = new cbAddLabel(AddLabel);
+                object[] obj = { str };
+                Invoke(cb, obj);
+            }
+            else
+            {
+                sbClientList.DropDownItems.Add(str);
+                sbClientList.Text = str;
+            }
+
+        }
+
+        bool isAlive(Socket sck) //미완성..
+        {
+            if (sck == null) return false;
+            if (sck.Connected == false) return false;
+
+            bool b1 = sck.Poll(1000, SelectMode.SelectRead); //정상(false) 오류(true)
+            //bool b2 = sck.Available > 0; //정상(true) 오류(false)
+            if (b1) return false;
+
+            try
+            {
+                sck.Send(new byte[1], 0, SocketFlags.OutOfBand);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         void ServerProcess() // 서버 세션 프로세스
-        {
+        {         
             byte[] buf = new byte[100];
             while (true)
             {
                 if (listen.Pending()) //클라이언트의 접속 요청 있으면..
                 {
-                    // AcceptTcpClient(): Blocking 함수
                     TcpClient tp = listen.AcceptTcpClient(); // 현재 받은 tcp client
-                    // 클라이언트한테 IP + Session 번호를 전송 -> 상대방 확인 + 이름 부여
-                    tp.Client.Send(Encoding.Default.GetBytes($"REQ:{tp.Client.RemoteEndPoint.ToString()}"));
-                    int n = tp.Client.Receive(buf); // buf[n:100]이 '\0'로 채워져 있음
-                    // 따라서 올바르게 string 변환하려면 GetString(buf, 0, n) 사용 필수
-                    string sId = Encoding.Default.GetString(buf,0,n).Split(':')[1]; // Out of idx-range Error
-                    tcp.Add(new tcpEx(tp, sId)); // List에 추가
-                    string wit = tp.Client.RemoteEndPoint.ToString(); // 한번 확인, 변수명 체크
-                    AddText($"{sId}({wit})로부터의 접속");
-                    //드랍다운 레이블에 클라이언트 추가 + 레이블로 설정
-                    sbClientList.DropDownItems.Add(wit);   //크로스 스레드 작업 오류
-                    sbClientList.Text = wit;
+                    string red = tp.Client.RemoteEndPoint.ToString(); // {IP:channel}
+                    tp.Client.Send(Encoding.Default.GetBytes($"REQ:{red}")); // REQ: 연결수립통보 + my IP 수신
+                    //GetString(buf, 0, n) 필수: Receive(buf)가 제대로 null 설정 안해줌
+                    int n = tp.Client.Receive(buf); 
+                    string sId = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':'); // Out of idx-range Error
+                    //if (sId == "") sId = "Anon"; // 기본 sId: "Anon"
+                    if (sId == "Noname")
+                    {
+                        tp.Client.Send(Encoding.Default.GetBytes($"REJECT:사용자명을 변경해주세요"));
+                        tp.Close();
+                        AddText($"클라이언트의 접속을 거부했습니다\r\n");
+                    }
+                    else
+                    {
+                        tp.Client.Send(Encoding.Default.GetBytes($"ACK:{red}")); // 체크
+                        tcp.Add(new tcpEx(tp, sId)); // List에 추가
+                        AddText($"{sId}({red})로부터의 접속\r\n");
+                        AddLabel(sId); // 아래 무명 메소드 방식으로 대체 가능
+                        //if (InvokeRequired)
+                        //{
+                        //    Invoke(new MethodInvoker(delegate() 
+                        //    { sbClientList.DropDownItems.Add(sId); } ));
+                        //}
+                    }
                     //InitServer 에서 서버 리드 스레드 생성함, 여기선 패스
                 }
                 Thread.Sleep(100); //while 문의 부담을 줄이기 위함
@@ -132,76 +194,23 @@ namespace MyKaTalk
                 {
                     if (tcp[i].tp.Available > 0)
                     {
-                        tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
-                        AddText(Encoding.Default.GetString(buf));
+                        int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
+                        AddText(Encoding.Default.GetString(buf, 0, n));
                     }
                 }
                 Thread.Sleep(100);
             }
         }
 
-        //void ServerProcessOld() // 서버 세션 프로세스
-        //{
-        //    while (true)
-        //    {
-        //        if (listen.Pending()) //클라이언트의 접속 요청 있으면..
-        //        {
-        //            // AcceptTcpClient(): Blocking 함수
-        //            TcpClient tp = listen.AcceptTcpClient();
-        //            tcp.Add(tp); // List에 추가
-        //            // 클라이언트한테 IP + Session 번호를 전송
-        //            tp.Client.Send(Encoding.Default.GetBytes($"ACK{tp.Client.RemoteEndPoint.ToString()}"));
-        //            // tcp 인덱스에서 넘어가려 하면 프로세스 종료
-        //            //if (currClientNum == (NUMTCP - 1)) break; 
-        //            //tcp[currClientNum] = listen.AcceptTcpClient();
-        //            AddText($"Server: Connection from Client [{tcp[currClientNum].Client.RemoteEndPoint.ToString()}]\r\n");
-        //            //드랍다운 레이블에 클라이언트 추가 + 레이블로 설정
-        //            sbClientList.DropDownItems.Add(tcp[currClientNum].Client.RemoteEndPoint.ToString());
-        //            sbClientList.Text = tcp[currClientNum].Client.RemoteEndPoint.ToString();
-        //            //threadRead 한개 돌려쓰기 + 복수 생성 방지
-        //            if (threadRead == null)
-        //            {
-        //                threadRead = new Thread(ReadProcess); //1대다 세션 위해 이동
-        //                threadRead.Start();
-        //            }
-        //            currClientNum++; //스레드 안정성 위해 여기서 변경
-        //        }
-        //        Thread.Sleep(100); //while 문의 부담을 줄이기 위함
-        //    }
-        //}
-
-
-        //TODO: msg 수정
-        //void ReadProcessOld() //서버 읽기 프로세스: cross block 주의
-        //{
-        //    // 문자열 버퍼
-        //    byte[] buf = new byte[512];
-        //    while (true)
-        //    {   // 현재 연결된 모든 클라이언트에 대해..
-        //        for (int i = 0; i < currClientNum; i++) 
-        //        {   
-        //            NetworkStream ns = tcp[i].GetStream(); // 이 라인 주의
-        //            if (ns.DataAvailable)
-        //            {
-        //                int n = ns.Read(buf, 0, 512); //버퍼로 클라이언트가 보낸 내용 받기
-        //                string msg = "Client: " + Encoding.Default.GetString(buf, 0, n).Trim() + "\r\n";
-        //                AddText(msg);
-        //            }
-        //        }
-        //        Thread.Sleep(100);
-        //    }
-        //}
-
-        //TODO: msg 수정
         void ClientProcess()
         {
             byte[] buf = new byte[BUF_SIZE];
             while (true)
             {
-                if (sock.Available > 0)
-                {
-                    sock.Receive(buf);        
-                    AddText(Encoding.Default.GetString(buf));
+                if (sock.Available > 0) //if문 아규먼트도 서순이 존재함
+                {                    
+                    int n = sock.Receive(buf);
+                    AddText(Encoding.Default.GetString(buf, 0, n));                    
                 }
                 Thread.Sleep(100);
             }
@@ -222,7 +231,7 @@ namespace MyKaTalk
             threadRead = new Thread(ReadProcess); //1대다 세션 위해 이동
             threadRead.Start();
 
-            //timer1.Start();
+            AddLabel("모두에게");
         }
 
         void closeServer()
@@ -235,46 +244,53 @@ namespace MyKaTalk
 
         
         private void mnOpenServer_Click(object sender, EventArgs e)
-        {   
-            if(dlgServer.ShowDialog() == DialogResult.OK)
+        {
+            if(threadServer != null)
             {
-                //다이얼로그에서 받은 포트 번호
-                int serverPort = int.Parse(dlgServer.port);
-                initServer(serverPort);
-                AddText($"Server started @ Port: [{serverPort}]\r\n");
-
+                if (MessageBox.Show("서버를 다시 열겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
+                if (threadRead != null) threadRead.Abort();
+                threadServer.Abort();
             }
+            operationMode = true; // Server Mode
+            initServer(serverPort);
+            AddText($"Server started @ Port: [{serverPort}]\r\n");
+
         }
 
-        //TODO: NAM -> 
+        
         private void mnConnect2Server_Click(object sender, EventArgs e)
         {
-            if(dlgClient.ShowDialog() == DialogResult.OK)
+            
+            if (sock != null) //기존 소켓, 스레드 닫기
             {
-                try
-                {   //기존 소켓 닫고, 스레드 재설정
-                    if (sock != null) sock.Close();
-                    if(threadClient != null) threadClient.Abort();
-                    
-                    byte[] buf = new byte[100];
-                    string serverIP = dlgClient.strIP;
-                    string serverPort = dlgClient.port;
-                    sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    sock.Connect(serverIP, int.Parse(serverPort)); // Connection Request
-                    int n = sock.Receive(buf);
-                    string myIP = Encoding.Default.GetString(buf, 0, n).Split(':')[1];
-                    sock.Send(Encoding.Default.GetBytes($"NAM:{tbInput.Text}"));
-                    //AddText($"Client: Server [{serverIP}:{serverPort}] Connection OK\r\n");
-                    //클라이언트용 소켓 스레드
-                    threadClient = new Thread(ClientProcess);
-                    tbInput.Text = "";
-
-                }
-                catch (Exception e1)
-                {
-                    MessageBox.Show(e1.Message);
-                }
+                if (MessageBox.Show("연결을 다시 수립하시겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
+                if (threadClient != null) threadClient.Abort();
+                sock.Close();
             }
+            operationMode = false; // 자동으로 클라이언트 모드로 진입
+
+            byte[] buf = new byte[100];
+            sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            sock.Connect(connectIP, connectPort); // Connection Request
+            //아래는 handshake 과정임
+            int n = sock.Receive(buf);  // REQ: 연결수립통보 + myIP 수신
+            string myIP = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
+            AddText($"My IP: {myIP}\r\n");
+            sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}"));
+
+            n = sock.Receive(buf);  // 최종 수락/거부 통보
+            string sRet = mylib.GetToken(0, Encoding.Default.GetString(buf, 0, n), ':');
+            if(sRet == "REJECT")
+            {
+                AddText($"Server[{connectIP}:{connectPort}]로부터 접속이 거부되었습니다\r\n");
+                return;
+            }                    
+            //클라이언트용 소켓 스레드
+            threadClient = new Thread(ClientProcess);
+            threadClient.Start(); // 요게 없어서 read를 못했음..
+            tbInput.Text = "";
+            //안내 메세지
+            AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n");
         }
 
         private void mnCloseServer_Click(object sender, EventArgs e)
@@ -290,16 +306,13 @@ namespace MyKaTalk
 
         private void puSend2Server_Click(object sender, EventArgs e)
         {
-            if(sock == null)
-            {
-                //MessageBox.Show("Only Server Present");
-                return;
-            }
+            if (sock == null) return;
             string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
             byte[] bArr = Encoding.Default.GetBytes(str);
             sock.Send(bArr); // Client -> Server
         }
 
+        //요거 동작 안하네;;
         private void puSend2Client_Click(object sender, EventArgs e)
         {
             string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
@@ -311,20 +324,7 @@ namespace MyKaTalk
             }
         }
 
-        private void frmMain_Load(object sender, EventArgs e)
-        {
-            int X = int.Parse(ini.GetPString("Location", "X", "0"));
-            int Y = int.Parse(ini.GetPString("Location", "Y", "0"));
-            Location = new Point(X, Y);
-            int SX = int.Parse(ini.GetPString("Size", "X", "459"));
-            int SY = int.Parse(ini.GetPString("Size", "Y", "472"));
-            int DIST = int.Parse(ini.GetPString("Size", "DIST", "200"));
-            Size = new Size(SX, SY);
-            splitContainer1.SplitterDistance = DIST;
-
-         
-
-        }
+        
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             //close threads when program ends
@@ -338,6 +338,13 @@ namespace MyKaTalk
             ini.WritePString("Size", "X", $"{Size.Width}");
             ini.WritePString("Size", "Y", $"{Size.Height}");
             ini.WritePString("Size", "DIST", $"{splitContainer1.SplitterDistance}");
+
+            ini.WritePString("Operation", "serverPort", $"{serverPort}");
+            ini.WritePString("Operation", "connectPort", $"{connectPort}");
+            ini.WritePString("Operation", "connectIP", $"{connectIP}");
+            //실 구현 시에는 암호화 필수
+            ini.WritePString("Operation", "sUID", $"{sUID}");
+            ini.WritePString("Operation", "sPWD", $"{sPWD}");
         }
 
 
@@ -345,13 +352,54 @@ namespace MyKaTalk
         private void tbInput_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.Shift && e.KeyCode == Keys.Enter)
-            {
-                // 메세지 전송 + 비우기
-                sock.Send(Encoding.Default.GetBytes(tbInput.Text));
-                tbInput.Text = "";
+            {   // Operation Mode에 따라 동작 변경
+                if(operationMode == true) // Server Mode
+                {
+                    for(int i = 0; i < tcp.Count; i++)
+                    {   //동명이인일 경우 동시 전송
+                        if (tcp[i].id == sbClientList.Text | sbClientList.Text == "모두에게") 
+                        {
+                            TcpClient tp = tcp[i].tp;
+                            if(isAlive(tp.Client)) // 살아있다면..
+                                tp.Client.Send(Encoding.Default.GetBytes(tbInput.Text));                            
+                        }
+                    }
+                    tbInput.Text = "";
+                }
+                else // Client Mode
+                {
+                    if(sock != null)
+                    {
+                        if (isAlive(sock))
+                        {
+                            sock.Send(Encoding.Default.GetBytes(tbInput.Text));
+                            tbInput.Text = "";
+                        }
+                        else
+                        {
+                            AddText("Server Connection lost\r\n");
+                            sock.Close();
+                            sock = null;
+                        } 
+                    }                    
+                }
             }
         }
 
-        
+        private void mnNetworkConfig_Click(object sender, EventArgs e)
+        {
+            frmNetConfig dlg = new frmNetConfig(serverPort, connectPort, connectIP, sUID, sPWD, operationMode);
+            if(dlg.ShowDialog() == DialogResult.OK)
+            {
+                serverPort = int.Parse(dlg.tbServerPort.Text);
+                connectPort = int.Parse(dlg.tbConnectPort.Text);
+                connectIP = dlg.tbConnectIP.Text;
+                sUID = dlg.tbUserID.Text;
+                sPWD = dlg.tbPassword.Text;
+                operationMode = dlg.rbServer.Checked;
+
+            }
+
+        }
     }
 }
