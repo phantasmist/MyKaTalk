@@ -346,7 +346,7 @@ namespace MyKaTalk
 
 
 
-        private void tbInput_KeyDown(object sender, KeyEventArgs e)
+        private void tbInput_KeyDown(object sender, KeyEventArgs e) //
         {
             if(e.Shift && e.KeyCode == Keys.Enter)
             {   // Operation Mode에 따라 동작 변경
