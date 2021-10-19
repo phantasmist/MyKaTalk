@@ -37,13 +37,15 @@ namespace MyKaTalk
             this.mnCloseServer = new System.Windows.Forms.ToolStripMenuItem();
             this.sthToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mnConnect2Server = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnExitClass = new System.Windows.Forms.ToolStripMenuItem();
             this.elseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mnNetworkConfig = new System.Windows.Forms.ToolStripMenuItem();
             this.출석표조회ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnShowDB = new System.Windows.Forms.ToolStripMenuItem();
             this.mnAddStudent = new System.Windows.Forms.ToolStripMenuItem();
             this.mnCurrTime = new System.Windows.Forms.ToolStripMenuItem();
             this.mnAddDate = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnShowDB = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnDEBUG = new System.Windows.Forms.ToolStripMenuItem();
             this.statusBar = new System.Windows.Forms.StatusStrip();
             this.sbLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.sbClientList = new System.Windows.Forms.ToolStripDropDownButton();
@@ -54,8 +56,8 @@ namespace MyKaTalk
             this.puSend2Client = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.mnDEBUG = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnExitClass = new System.Windows.Forms.ToolStripMenuItem();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.FileSend = new System.Windows.Forms.ToolStripMenuItem();
             this.mainMenu.SuspendLayout();
             this.statusBar.SuspendLayout();
             this.popInput.SuspendLayout();
@@ -72,7 +74,8 @@ namespace MyKaTalk
             this.menuToolStripMenuItem,
             this.sthToolStripMenuItem,
             this.elseToolStripMenuItem,
-            this.출석표조회ToolStripMenuItem});
+            this.출석표조회ToolStripMenuItem,
+            this.FileSend});
             this.mainMenu.Location = new System.Drawing.Point(0, 0);
             this.mainMenu.Name = "mainMenu";
             this.mainMenu.Size = new System.Drawing.Size(368, 28);
@@ -114,9 +117,16 @@ namespace MyKaTalk
             // mnConnect2Server
             // 
             this.mnConnect2Server.Name = "mnConnect2Server";
-            this.mnConnect2Server.Size = new System.Drawing.Size(224, 26);
+            this.mnConnect2Server.Size = new System.Drawing.Size(214, 26);
             this.mnConnect2Server.Text = "Connect to Server";
             this.mnConnect2Server.Click += new System.EventHandler(this.mnConnect2Server_Click);
+            // 
+            // mnExitClass
+            // 
+            this.mnExitClass.Name = "mnExitClass";
+            this.mnExitClass.Size = new System.Drawing.Size(214, 26);
+            this.mnExitClass.Text = "퇴실";
+            this.mnExitClass.Click += new System.EventHandler(this.mnExitClass_Click);
             // 
             // elseToolStripMenuItem
             // 
@@ -145,6 +155,13 @@ namespace MyKaTalk
             this.출석표조회ToolStripMenuItem.Size = new System.Drawing.Size(53, 24);
             this.출석표조회ToolStripMenuItem.Text = "출석";
             // 
+            // mnShowDB
+            // 
+            this.mnShowDB.Name = "mnShowDB";
+            this.mnShowDB.Size = new System.Drawing.Size(224, 26);
+            this.mnShowDB.Text = "출석표 조회";
+            this.mnShowDB.Click += new System.EventHandler(this.mnShowDB_Click);
+            // 
             // mnAddStudent
             // 
             this.mnAddStudent.Name = "mnAddStudent";
@@ -166,12 +183,12 @@ namespace MyKaTalk
             this.mnAddDate.Text = "addDate";
             this.mnAddDate.Click += new System.EventHandler(this.mnAddDate_Click);
             // 
-            // mnShowDB
+            // mnDEBUG
             // 
-            this.mnShowDB.Name = "mnShowDB";
-            this.mnShowDB.Size = new System.Drawing.Size(224, 26);
-            this.mnShowDB.Text = "출석표 조회";
-            this.mnShowDB.Click += new System.EventHandler(this.mnShowDB_Click);
+            this.mnDEBUG.Name = "mnDEBUG";
+            this.mnDEBUG.Size = new System.Drawing.Size(224, 26);
+            this.mnDEBUG.Text = "DEBUG";
+            this.mnDEBUG.Click += new System.EventHandler(this.mnDEBUG_Click);
             // 
             // statusBar
             // 
@@ -226,9 +243,10 @@ namespace MyKaTalk
             this.tbInput.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.tbInput.Multiline = true;
             this.tbInput.Name = "tbInput";
-            this.tbInput.Size = new System.Drawing.Size(361, 108);
+            this.tbInput.Size = new System.Drawing.Size(361, 92);
             this.tbInput.TabIndex = 3;
             this.tbInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbInput_KeyDown);
+            this.tbInput.KeyUp += new System.Windows.Forms.KeyEventHandler(this.tbInput_KeyUp);
             // 
             // popInput
             // 
@@ -275,19 +293,16 @@ namespace MyKaTalk
             this.splitContainer1.SplitterWidth = 20;
             this.splitContainer1.TabIndex = 4;
             // 
-            // mnDEBUG
+            // openFileDialog1
             // 
-            this.mnDEBUG.Name = "mnDEBUG";
-            this.mnDEBUG.Size = new System.Drawing.Size(224, 26);
-            this.mnDEBUG.Text = "DEBUG";
-            this.mnDEBUG.Click += new System.EventHandler(this.mnDEBUG_Click);
+            this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // mnExitClass
+            // FileSend
             // 
-            this.mnExitClass.Name = "mnExitClass";
-            this.mnExitClass.Size = new System.Drawing.Size(224, 26);
-            this.mnExitClass.Text = "퇴실";
-            this.mnExitClass.Click += new System.EventHandler(this.mnExitClass_Click);
+            this.FileSend.Name = "FileSend";
+            this.FileSend.Size = new System.Drawing.Size(80, 24);
+            this.FileSend.Text = "FileSend";
+            this.FileSend.Click += new System.EventHandler(this.FileSend_Click);
             // 
             // frmMain
             // 
@@ -346,6 +361,8 @@ namespace MyKaTalk
         private System.Windows.Forms.ToolStripMenuItem mnShowDB;
         private System.Windows.Forms.ToolStripMenuItem mnDEBUG;
         private System.Windows.Forms.ToolStripMenuItem mnExitClass;
+        private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.ToolStripMenuItem FileSend;
     }
 }
 

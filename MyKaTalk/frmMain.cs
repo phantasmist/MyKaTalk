@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
 
 namespace MyKaTalk
 {
@@ -20,6 +21,8 @@ namespace MyKaTalk
         {
             InitializeComponent();
         }
+
+        #region 변수
 
         //global var
         const int BUF_SIZE = 512;
@@ -33,7 +36,9 @@ namespace MyKaTalk
         Thread threadServer = null; //Server용 Listen thread
         Thread threadRead = null; //Server용 Read thread
         Thread threadClient = null; //Client용 Read thread
-
+        Thread filethread = null;
+        string FileName = "";
+        int filemode = 0;
         // static 효과 검색
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
@@ -48,10 +53,12 @@ namespace MyKaTalk
         string sUID = "Noname";
         string sPWD = "";
         string TODAY = "";
+        
+
 
         iniFile ini = new iniFile(@".\chat.ini");
 
-        
+        #endregion
 
         private void frmMain_Load(object sender, EventArgs e)
         {
@@ -184,8 +191,19 @@ namespace MyKaTalk
                     {
                         int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
                         // msg를 확인해서 퇴실 명령어를 체크
-                        string msg = Encoding.Default.GetString(buf, 0, n);                        
-                        if (msg.StartsWith("/EXIT:"))
+                        string msg = Encoding.Default.GetString(buf, 0, n);
+                        if (Encoding.Default.GetString(buf, 0, n).Split('|')[0].Trim() == "File")
+                        {
+                            if (filemode != 1)
+                            {
+                                FileName = Encoding.Default.GetString(buf, 0, n).Split('|')[1].Trim();
+                                AddText(Encoding.Default.GetString(buf, 0, n).Split('|')[2].Trim());
+                                filemode = 1;
+                                filethread = new Thread(FileProcess);
+                                filethread.Start();
+                            }
+                        }
+                        else if (msg.StartsWith("/EXIT:"))
                         {
                             checkExitClass(msg);
                         }
@@ -205,9 +223,85 @@ namespace MyKaTalk
                 if (sock.Available > 0) //if문 아규먼트도 서순이 존재함
                 {                    
                     int n = sock.Receive(buf);
-                    AddText(Encoding.Default.GetString(buf, 0, n));                    
+                    if (Encoding.Default.GetString(buf, 0, n).Split('|')[0].Trim() == "File")
+                    {
+                        if (filemode != 2)
+                        {
+                            FileName = Encoding.Default.GetString(buf, 0, n).Split('|')[1].Trim();
+                            AddText(Encoding.Default.GetString(buf, 0, n).Split('|')[2].Trim());
+                            filemode = 2;
+                            filethread = new Thread(FileProcess);
+                            filethread.Start();
+                        }
+                    }
+                    else
+                    {
+                        AddText(Encoding.Default.GetString(buf, 0, n));
+                    }                 
                 }
                 Thread.Sleep(100);
+            }
+        }
+        void FileProcess()
+        {
+            byte[] buf = new byte[BUF_SIZE];
+            if (filemode == 1)
+            {
+                while (true)
+                {
+                    for (int i = 0; i < tcp.Count; i++)
+                    {
+                        if (tcp[i].tp.Available > 0)
+                        {
+                            int n = tcp[i].tp.Client.Receive(buf);
+                            string filenamestr;
+                            if (FileName != "")
+                            {
+                                filenamestr = @"" + FileName;
+                            }
+                            else
+                            {
+                                filenamestr = @"downFile";
+                            }
+                            AddText(filenamestr);
+                            FileStream fs = new FileStream(filenamestr, FileMode.Create);
+                            fs.Write(buf, 0, n);
+                            buf = Encoding.Default.GetBytes("");
+                            fs.Flush();
+                            fs.Close();
+                            filemode = 0;
+                            FileName = "";
+                            filethread.Abort();
+                        }
+                    }
+                }
+            }
+            else if (filemode == 2)
+            {
+                while (true)
+                {
+                    if (sock.Available > 0)
+                    {
+                        int n = sock.Receive(buf);
+                        string filenamestr;
+                        if (FileName != "")
+                        {
+                            filenamestr = @"" + FileName;
+                        }
+                        else
+                        {
+                            filenamestr = @"downFile";
+                        }
+                        AddText(filenamestr);
+                        FileStream fs = new FileStream(filenamestr, FileMode.Create);
+                        fs.Write(buf, 0, n);
+                        buf = Encoding.Default.GetBytes("");
+                        fs.Flush();
+                        fs.Close();
+                        filemode = 0;
+                        filethread.Abort();
+                    }
+                }
             }
         }
 
@@ -510,6 +604,56 @@ namespace MyKaTalk
             sock.Send(bArr);
             // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
             AddText("퇴실했습니다\r\n");
+        }
+
+        private void FileSend_Click(object sender, EventArgs e)
+        {
+            string sendFile;
+            string Filename;
+            byte[] buf = new byte[BUF_SIZE];
+            openFileDialog1.FileName = "";
+            openFileDialog1.Filter = "모든파일(*.*) | *.*; | 텍스트 파일(.txt) | *.txt;*.TXT | 이미지 파일(.png,.bmp,.jpg,.gif) | *.png; *.bmp; *.jpg; *.gif";
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                sendFile = openFileDialog1.FileName;
+                Filename = Path.GetFileName(openFileDialog1.FileName);
+                if (operationMode)
+                {
+                    for (int i = 0; i < tcp.Count; i++)
+                    {
+                        tcp[i].tp.Client.Send(Encoding.Default.GetBytes($"File | {Filename} | 클라이언트로부터 파일전송입니다.\r\n"));
+                    }
+                    if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        for (int i = 0; i < tcp.Count; i++)
+                        {
+                            tcp[i].tp.Client.SendFile(sendFile);
+                        }
+                    }
+                    for (int i = 0; i < tcp.Count; i++)
+                    {
+                        tcp[i].tp.Client.Send(Encoding.Default.GetBytes($"전송완료.\r\n"));
+                    }
+                }
+                else
+                {
+                    sock.Send(Encoding.Default.GetBytes($"File | {Filename} | 클라이언트로부터 파일전송입니다.\r\n"));
+
+                    if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        sock.SendFile(sendFile);
+                    }
+                    sock.Send(Encoding.Default.GetBytes($"전송완료.\r\n"));
+                }
+            }
+        }
+
+        private void tbInput_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                tbInput.Text = "";
+            }
         }
     }
 }
