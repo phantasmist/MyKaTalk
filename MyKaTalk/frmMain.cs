@@ -38,7 +38,7 @@ namespace MyKaTalk
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
         // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30"
-        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30"
+        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
         int serverPort = 9000;
@@ -218,14 +218,24 @@ namespace MyKaTalk
                     if (tcp[i].tp.Available > 0)
                     {
                         int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
+                        //string getstr = Encoding.Default.GetString(buf, 0, n);
+                        AddText(Encoding.Default.GetString(buf, 0, n));
                         // msg를 확인해서 퇴실 명령어를 체크
-                        string msg = Encoding.Default.GetString(buf, 0, n);                        
+                        string msg = Encoding.Default.GetString(buf, 0, n);
                         if (msg.StartsWith("/EXIT:"))
                         {
                             checkExitClass(msg);
                         }
                         else
                             AddText(msg);
+                        for (int k = 0; k < tcp.Count; k++)
+                        {
+                            TcpClient tp = tcp[k].tp;
+                            if (k != i)
+                            {
+                                tp.Client.Send(Encoding.Default.GetBytes(msg));
+                            }
+                        }
                     }
                 }
                 Thread.Sleep(100);
@@ -318,8 +328,9 @@ namespace MyKaTalk
             }
             operationMode = true; // Server Mode
             initServer(serverPort);
-            //AddText($"Server started @ Port: [{serverPort}]\r\n");
-
+            AddText($"Server started @ Port: [{serverPort}]\r\n");
+            sbClientList2.Text = "KOSTA";
+            sbLabel1.Text = $"{connectIP}";
         }
 
 
@@ -432,37 +443,40 @@ namespace MyKaTalk
 
         private void tbInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.Shift && e.KeyCode == Keys.Enter)
+            if (e.Shift && e.KeyCode == Keys.Enter)
             {   // Operation Mode에 따라 동작 변경
-                if(operationMode == true) // Server Mode
+                if (operationMode == true) // Server Mode
                 {
-                    for(int i = 0; i < tcp.Count; i++)
+                    for (int i = 0; i < tcp.Count; i++)
                     {   //동명이인일 경우 동시 전송
-                        if (tcp[i].id == sbClientList.Text | sbClientList.Text == "모두에게") 
+                        if (tcp[i].id == sbClientList.Text | sbClientList.Text == "모두에게")
                         {
                             TcpClient tp = tcp[i].tp;
-                            if(isAlive(tp.Client)) // 살아있다면..
-                                tp.Client.Send(Encoding.Default.GetBytes(tbInput.Text));                            
+                            //if(isAlive(tp.Client)) // 살아있다면..
+                            tp.Client.Send(Encoding.Default.GetBytes($" KOSTA : {tbInput.Text.Trim()}\r\n"));
+                            //AddText($" KOSTA : {tbInput.Text.Trim()}\r\n");
                         }
                     }
+                    AddText($" KOSTA : {tbInput.Text.Trim()}\r\n");
                     tbInput.Text = "";
                 }
                 else // Client Mode
                 {
-                    if(sock != null)
+                    if (sock != null)
                     {
-                        if (isAlive(sock))
-                        {
-                            sock.Send(Encoding.Default.GetBytes(tbInput.Text));
-                            tbInput.Text = "";
-                        }
-                        else
-                        {
-                            AddText("Server Connection lost\r\n");
-                            sock.Close();
-                            sock = null;
-                        } 
-                    }                    
+                        //if (isAlive(sock))
+                        //
+                        sock.Send(Encoding.Default.GetBytes($" {sUID} : {tbInput.Text.Trim()} \r\n"));
+                        AddText($" {sUID} : {tbInput.Text.Trim()}\r\n");
+                        tbInput.Text = "";
+                        //}
+                        //else
+                        //{
+                        //    AddText("Server Connection lost\r\n");
+                        //    sock.Close();
+                        //    sock = null;
+                        //} 
+                    }
                 }
             }
         }
