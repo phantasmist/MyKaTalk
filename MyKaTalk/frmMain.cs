@@ -218,7 +218,7 @@ namespace MyKaTalk
                     {
                         int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
                         //string getstr = Encoding.Default.GetString(buf, 0, n);
-                        AddText(Encoding.Default.GetString(buf, 0, n));
+                        //AddText(Encoding.Default.GetString(buf, 0, n));
                         // msg를 확인해서 퇴실 명령어를 체크
                         string msg = Encoding.Default.GetString(buf, 0, n);
                         if (msg.StartsWith("/EXIT:"))
@@ -327,7 +327,8 @@ namespace MyKaTalk
             }
             operationMode = true; // Server Mode
             initServer(serverPort);
-            AddText($"Server started @ Port: [{serverPort}]\r\n");
+            //AddText($"Server started @ Port: [{serverPort}]\r\n");
+            //AddLabel() 못쓴다..
             sbClientList2.Text = "KOSTA";
             sbLabel1.Text = $"{connectIP}";
         }
@@ -367,6 +368,8 @@ namespace MyKaTalk
                 tbInput.Text = "";
                 //안내 메세지
                 AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n");
+                sbClientList2.Text = $"{sUID}";
+                sbLabel1.Text = $"{connectIP}";
             }
             catch (Exception e1)
             {
@@ -403,7 +406,8 @@ namespace MyKaTalk
             //sbLabel에서 선택된 Client로 보내기 전에 전부 보내기?
             for (int i = 0; i < tcp.Count; i++)
             {
-                tcp[i].tp.Client.Send(bArr); // Server -> Client
+                if( isAlive(tcp[i].tp.Client) ) // 모두 보내기 기능이라던가 오류 발생 차단
+                    tcp[i].tp.Client.Send(bArr); // Server -> Client
             }
         }
 
@@ -451,9 +455,11 @@ namespace MyKaTalk
                         if (tcp[i].id == sbClientList.Text | sbClientList.Text == "모두에게")
                         {
                             TcpClient tp = tcp[i].tp;
-                            //if(isAlive(tp.Client)) // 살아있다면..
-                            tp.Client.Send(Encoding.Default.GetBytes($" KOSTA : {tbInput.Text.Trim()}\r\n"));
-                            //AddText($" KOSTA : {tbInput.Text.Trim()}\r\n");
+                            if(isAlive(tp.Client)) // 살아있다면..
+                            {
+                                tp.Client.Send(Encoding.Default.GetBytes($" KOSTA : {tbInput.Text.Trim()}\r\n"));
+                                AddText($" KOSTA : {tbInput.Text.Trim()}\r\n"); // 자기화면에 표시
+                            }                               
                         }
                     }
                     AddText($" KOSTA : {tbInput.Text.Trim()}\r\n");
@@ -463,18 +469,18 @@ namespace MyKaTalk
                 {
                     if (sock != null)
                     {
-                        //if (isAlive(sock))
-                        //
-                        sock.Send(Encoding.Default.GetBytes($" {sUID} : {tbInput.Text.Trim()} \r\n"));
-                        AddText($" {sUID} : {tbInput.Text.Trim()}\r\n");
-                        tbInput.Text = "";
-                        //}
-                        //else
-                        //{
-                        //    AddText("Server Connection lost\r\n");
-                        //    sock.Close();
-                        //    sock = null;
-                        //} 
+                        if (isAlive(sock))
+                        {
+                            sock.Send(Encoding.Default.GetBytes($" {sUID} : {tbInput.Text.Trim()} \r\n"));
+                            AddText($" {sUID} : {tbInput.Text.Trim()}\r\n"); // 자기 화면에 기록
+                            tbInput.Text = "";
+                        }
+                        else
+                        {
+                            AddText("Server Connection lost\r\n");
+                            sock.Close();
+                            sock = null;
+                        }
                     }
                 }
             }
