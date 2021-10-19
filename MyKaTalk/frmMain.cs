@@ -36,7 +36,7 @@ namespace MyKaTalk
 
         // static 효과 검색
         // 가능하면 상대경로 설정
-        // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
+        // 이거 한줄만 바뀌면 frmDB도 자동 변경됨...
         static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\snows\source\repos\Project_AppAttend\MyKaTalk\MyKaTalk\bin\Debug\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
