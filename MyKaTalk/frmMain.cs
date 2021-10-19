@@ -37,7 +37,7 @@ namespace MyKaTalk
         // static 효과 검색
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
-        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
+        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\snows\source\repos\Project_AppAttend\MyKaTalk\MyKaTalk\bin\Debug\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
         int serverPort = 9000;
@@ -50,8 +50,28 @@ namespace MyKaTalk
         string TODAY = "";
 
         iniFile ini = new iniFile(@".\chat.ini");
+        private void Initialization()
+        {
+            sock = null;
+            tcp = new List<tcpEx>();
+            listen = null;
+            threadServer = null;
+            threadRead = null;
+            threadClient = null;
+            int serverPort = 9000;
+            string connectIP = "127.0.0.1";
+            int connectPort = 9000;
+            bool operationMode = true;
+            string sUID = "Noname";
+            string sPWD = "";
 
-        
+            tbInput = null;
+            tbOutput = null;
+
+            if (threadClient != null) threadClient.Abort();
+            if (threadRead != null) threadRead.Abort();
+            if (threadServer != null) threadServer.Abort();
+        }
 
         private void frmMain_Load(object sender, EventArgs e)
         {
@@ -89,14 +109,24 @@ namespace MyKaTalk
         delegate void cbAddText(string str); //delegate 방식
         void AddText(string str)
         {
-            if (tbOutput.InvokeRequired)
+            try
             {
-                cbAddText cb = new cbAddText(AddText);
-                object[] obj = { str };
-                Invoke(cb, obj);
+                if (tbOutput.Text != null)       // Client, Server 안 켜고 그냥 창 닫은 경우의 에러 방지
+                {
+                    if (tbOutput.InvokeRequired)
+                    {
+                        cbAddText cb = new cbAddText(AddText);
+                        object[] obj = { str };
+                        Invoke(cb, obj);
+                    }
+                    else
+                        tbOutput.AppendText(str); // AppendText로 수정 //오토스크롤되고
+                }
             }
-            else
-                tbOutput.AppendText(str); // AppendText로 수정 //오토스크롤되고
+            catch (Exception e1)
+            {
+                MessageBox.Show(e1.Message);
+            }
         }       
        
         delegate void cbAddLabel(string str);
@@ -118,13 +148,16 @@ namespace MyKaTalk
 
         bool isAlive(Socket sck) //미완성..
         {
-            if (sck == null) return false; 
+            if (sck == null) return false;
             if (sck.Connected == false) return false;
 
             bool b1 = sck.Poll(1000, SelectMode.SelectRead); //정상(false) 오류(true)
-            //bool b2 = sck.Available > 0; //정상(true) 오류(false)
-            if (b1) return false;
+            bool b2 = (sck.Available == 0); //오류(true) 정상(false)    /
+            if (b1 && b2) return false;
 
+            //return true;
+
+            // 아래 더 있는 게
             try
             {
                 sck.Send(new byte[1], 0, SocketFlags.OutOfBand);
@@ -132,6 +165,7 @@ namespace MyKaTalk
             }
             catch
             {
+                Initialization();
                 return false;
             }
         }
@@ -202,43 +236,77 @@ namespace MyKaTalk
             byte[] buf = new byte[BUF_SIZE];
             while (true)
             {
-                if (sock.Available > 0) //if문 아규먼트도 서순이 존재함
-                {                    
-                    int n = sock.Receive(buf);
-                    AddText(Encoding.Default.GetString(buf, 0, n));                    
+                try
+                {
+                    if (isAlive(sock) || sock.Available > 0)      // socket이 살아있다면 + socket에 읽어올 것이 있다면             ************************* 오른쪽이 0이라서 else
+                    {
+                        int n = sock.Receive(buf);
+                        AddText(Encoding.Default.GetString(buf, 0, n));
+                    }
+                    else
+                    {
+                        //if (sock == null)
+                        //if (sock.Available > 0) //if문 아규먼트도 서순이 존재함
+                        MessageBox.Show("Server와의 연결이 끊어졌습니다.");
+                        break;                    // Server 연결된 상태에서 Server 끄고 Client 메시지 던지면 socket null로 탈출하는 것 방지
+                    }
+                }
+                catch (Exception e1)
+                {                                           // 
+                    MessageBox.Show(e1.Message);
+                    threadClient.Abort();
                 }
                 Thread.Sleep(100);
             }
+
         }
 
         void initServer(int serverPort) // input은 수정할지도..
         {
-            if (listen != null) listen.Stop();
-            listen = new TcpListener(serverPort);
-            listen.Start();
+            try
+            {
+                if (listen != null) listen.Stop();
+                listen = new TcpListener(serverPort);
+                listen.Start();
 
-            // 서버 세션 스레드 시작
-            if (threadServer != null) threadServer.Abort();
-            threadServer = new Thread(ServerProcess);
-            threadServer.Start();
-            // 서버 리드 스레드 시작
-            if (threadRead != null) threadRead.Abort();
-            threadRead = new Thread(ReadProcess); //1대다 세션 위해 이동
-            threadRead.Start();
+                // 서버 세션 스레드 시작
+                if (threadServer != null) threadServer.Abort();
+                threadServer = new Thread(ServerProcess);
+                threadServer.Start();
+                // 서버 리드 스레드 시작
+                if (threadRead != null) threadRead.Abort();
+                threadRead = new Thread(ReadProcess); //1대다 세션 위해 이동
+                threadRead.Start();
 
-            AddLabel("모두에게");
-            addDate(); // db에 오늘 날짜 컬럼 새로 만들기
+                AddText($"Server started @ Port: [{serverPort}]\r\n");
+                AddLabel("모두에게");                                           // server 되면 생기게 위로 옮김
+            }
+            catch (Exception e2)
+            {
+                MessageBox.Show(e2.Message);
+                Initialization();
+            }
         }
 
         void closeServer()
         {
-            if (listen != null) listen.Stop();
-            if (threadServer != null) threadServer.Abort();
-            if (threadRead != null) threadRead.Abort();
-            if (timer1.Enabled) timer1.Stop();
+            try
+            {
+
+                if (listen != null) listen.Stop();
+                if (threadServer != null) threadServer.Abort();
+                if (threadRead != null) threadRead.Abort();
+                AddText($"서버를 닫습니다. Port: [{serverPort}]\r\n");
+            }
+            catch (Exception e1)
+            {
+                MessageBox.Show(e1.Message);
+                Initialization();
+            }
+            //if (timer1.Enabled) timer1.Stop();                            // 수정, timer1 지금 안 씀
         }
 
-        
+
         private void mnOpenServer_Click(object sender, EventArgs e)
         {
             if(threadServer != null)
@@ -249,44 +317,51 @@ namespace MyKaTalk
             }
             operationMode = true; // Server Mode
             initServer(serverPort);
-            AddText($"Server started @ Port: [{serverPort}]\r\n");
+            //AddText($"Server started @ Port: [{serverPort}]\r\n");
 
         }
 
-        
-        private void mnConnect2Server_Click(object sender, EventArgs e)
+
+        private void mnConnect2Server_Click(object sender, EventArgs e)         // try catch문 추가(Server연결 없이 Client 연결 시 뻑남)
         {
-            
-            if (sock != null) //기존 소켓, 스레드 닫기
+            try
             {
-                if (MessageBox.Show("연결을 다시 수립하시겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
-                if (threadClient != null) threadClient.Abort();
-                sock.Close();
+                if (sock != null) //기존 소켓, 스레드 닫기
+                {
+                    if (MessageBox.Show("연결을 다시 수립하시겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
+                    if (threadClient != null) threadClient.Abort();
+                    sock.Close();
+                }
+                operationMode = false; // 자동으로 클라이언트 모드로 진입
+
+                byte[] buf = new byte[100];
+                sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                sock.Connect(connectIP, connectPort); // Connection Request
+                //아래는 handshake 과정임
+                int n = sock.Receive(buf);  // REQ: 연결수립통보 + myIP 수신
+                string myIP = myLibrary.mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
+                AddText($"My IP: {myIP}\r\n");
+                sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}:{sPWD}")); // 패스워드 추가 전송  ******
+
+                n = sock.Receive(buf);  // 최종 수락/거부 통보
+                string sRet = mylib.GetToken(0, Encoding.Default.GetString(buf, 0, n), ':');
+                if (sRet == "REJECT")
+                {
+                    AddText($"Server[{connectIP}:{connectPort}]로부터 접속이 거부되었습니다\r\n");
+                    return;
+                }
+                //클라이언트용 소켓 스레드
+                threadClient = new Thread(ClientProcess);
+                threadClient.Start(); // 요게 없어서 read를 못했음..
+                tbInput.Text = "";
+                //안내 메세지
+                AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n");
             }
-            operationMode = false; // 자동으로 클라이언트 모드로 진입
-
-            byte[] buf = new byte[100];
-            sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            sock.Connect(connectIP, connectPort); // Connection Request
-            //아래는 handshake 과정임
-            int n = sock.Receive(buf);  // REQ: 연결수립통보 + myIP 수신
-            string myIP = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
-            AddText($"My IP: {myIP}\r\n");
-            sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}:{sPWD}")); // 패스워드 추가 전송
-
-            n = sock.Receive(buf);  // 최종 수락/거부 통보
-            string sRet = mylib.GetToken(0, Encoding.Default.GetString(buf, 0, n), ':');
-            if(sRet == "REJECT")
+            catch (Exception e1)
             {
-                AddText($"Server[{connectIP}:{connectPort}]로부터 접속이 거부되었습니다\r\n");
-                return;
-            }                    
-            //클라이언트용 소켓 스레드
-            threadClient = new Thread(ClientProcess);
-            threadClient.Start(); // 요게 없어서 read를 못했음..
-            tbInput.Text = "";
-            //안내 메세지
-            AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n");
+                MessageBox.Show(e1.Message);
+                Initialization();
+            }
         }
 
         private void mnCloseServer_Click(object sender, EventArgs e)
@@ -321,32 +396,40 @@ namespace MyKaTalk
             }
         }
 
-        
+
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //close threads when program ends
-            closeServer();
-            if (threadClient != null) threadClient.Abort();
-            if (sock != null) sock.Close(); //이거 없으면 sock이 사는듯
+            try
+            {
+                //close threads when program ends
+                closeServer();
+                if (threadClient != null) threadClient.Abort();
+                if (sock != null) sock.Close(); //이거 없으면 sock이 사는듯
 
-            //프로그램 위치,크기 ini에 기록
-            ini.WritePString("Location", "X", $"{Location.X}");
-            ini.WritePString("Location", "Y", $"{Location.Y}");
-            ini.WritePString("Size", "X", $"{Size.Width}");
-            ini.WritePString("Size", "Y", $"{Size.Height}");
-            ini.WritePString("Size", "DIST", $"{splitContainer1.SplitterDistance}");
+                //프로그램 위치,크기 ini에 기록
+                ini.WritePString("Location", "X", $"{Location.X}");
+                ini.WritePString("Location", "Y", $"{Location.Y}");
+                ini.WritePString("Size", "X", $"{Size.Width}");
+                ini.WritePString("Size", "Y", $"{Size.Height}");
+                ini.WritePString("Size", "DIST", $"{splitContainer1.SplitterDistance}");
 
-            ini.WritePString("Operation", "serverPort", $"{serverPort}");
-            ini.WritePString("Operation", "connectPort", $"{connectPort}");
-            ini.WritePString("Operation", "connectIP", $"{connectIP}");
-            //실 구현 시에는 암호화 필수
-            ini.WritePString("Operation", "sUID", $"{sUID}");
-            ini.WritePString("Operation", "sPWD", $"{sPWD}");
+                ini.WritePString("Operation", "serverPort", $"{serverPort}");
+                ini.WritePString("Operation", "connectPort", $"{connectPort}");
+                ini.WritePString("Operation", "connectIP", $"{connectIP}");
+                //실 구현 시에는 암호화 필수
+                ini.WritePString("Operation", "sUID", $"{sUID}");
+                ini.WritePString("Operation", "sPWD", $"{sPWD}");
+            }
+            catch (Exception e1)
+            {
+                MessageBox.Show(e1.ToString() + e1.Message);
+                Initialization();
+            }
         }
 
 
 
-        private void tbInput_KeyDown(object sender, KeyEventArgs e) //ㅁㄴㅇ
+        private void tbInput_KeyDown(object sender, KeyEventArgs e)
         {
             if(e.Shift && e.KeyCode == Keys.Enter)
             {   // Operation Mode에 따라 동작 변경
@@ -386,17 +469,28 @@ namespace MyKaTalk
         private void mnNetworkConfig_Click(object sender, EventArgs e)
         {
             frmNetConfig dlg = new frmNetConfig(serverPort, connectPort, connectIP, sUID, sPWD, operationMode);
-            if(dlg.ShowDialog() == DialogResult.OK)
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
                 serverPort = int.Parse(dlg.tbServerPort.Text);
                 connectPort = int.Parse(dlg.tbConnectPort.Text);
                 connectIP = dlg.tbConnectIP.Text;
                 sUID = dlg.tbUserID.Text;
                 sPWD = dlg.tbPassword.Text;
-                operationMode = dlg.rbServer.Checked;
+                if (dlg.rbServer.Checked)
+                {
+                    initServer(serverPort);         // server 문제 생기면 탈출
+                    if (threadServer != null)        // 문제 
+                    {
+                        operationMode = true; // Server Mode
+                    }
+                }
+                else
+                {
+                    operationMode = false;
+                }
             }
 
-        }        
+        }
 
         void checkAttendance(string sId)
         {
