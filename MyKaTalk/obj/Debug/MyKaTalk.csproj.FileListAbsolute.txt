@@ -14,3 +14,5 @@ C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\bin\Debug\myLibrary.dll
 C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\bin\Debug\myLibrary.pdb
 C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\obj\Debug\MyKaTalk.csproj.CopyComplete
 C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\obj\Debug\MyKaTalk.frmNetConfig.resources
+C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\obj\Debug\MyKaTalk.frmDB.resources
+C:\Users\phantasmist\source\repos\MyKaTalk\MyKaTalk\obj\Debug\MyKaTalk.frmAddStudent.resources

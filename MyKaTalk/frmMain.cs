@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
 using System.Net.Sockets;
@@ -22,7 +23,7 @@ namespace MyKaTalk
 
         //global var
         const int BUF_SIZE = 512;
-        const int NUMTCP = 10; //tcp 배열 개수
+        //const int NUMTCP = 10; //tcp 배열 개수
 
         Socket sock = null;   //서버 입장에서 socket, 클라이언트 입장에선 원서버로 구동
         List<tcpEx> tcp = new List<tcpEx>(); // List: mutable + generic type
@@ -33,9 +34,11 @@ namespace MyKaTalk
         Thread threadRead = null; //Server용 Read thread
         Thread threadClient = null; //Client용 Read thread
 
-        // 서버폼, 클라이언트폼: 여러 객체 생성 방지
-        frmServer dlgServer = new frmServer();
-        frmClient dlgClient = new frmClient();
+        // static 효과 검색
+        // 가능하면 상대경로 설정
+        // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
+        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
+        SqlDB sqldb = new SqlDB(connString);
 
         int serverPort = 9000;
         string connectIP = "127.0.0.1";
@@ -44,10 +47,9 @@ namespace MyKaTalk
 
         string sUID = "Noname";
         string sPWD = "";
+        string TODAY = "";
 
-        //server mode client mode 전환이 가능해야 한다
-
-        iniClass ini = new iniClass(@".\chat.ini");
+        iniFile ini = new iniFile(@".\chat.ini");
 
         
 
@@ -68,15 +70,9 @@ namespace MyKaTalk
             //실 적용 시에는 암호화 필수
             sUID = ini.GetPString("Operation", "sUID", "USERNAME");
             sPWD = ini.GetPString("Operation", "sPWD", "");
-
+            TODAY = dashDate(); // "_YYMMDD" 
         }
 
-
-        //private void timer1_Tick(object sender, EventArgs e) //일정 시간 간격으로 텍스트 출력
-        //{
-        //    tbOutput.Text += strTxt;
-        //    strTxt = "";
-        //}
 
         class tcpEx
         {
@@ -89,10 +85,6 @@ namespace MyKaTalk
             
         }
 
-        //void AddText(string str) //Timer 방식
-        //{
-        //    strTxt += str;
-        //}
 
         delegate void cbAddText(string str); //delegate 방식
         void AddText(string str)
@@ -104,11 +96,9 @@ namespace MyKaTalk
                 Invoke(cb, obj);
             }
             else
-                tbOutput.Text += str;
-        }
-
-        //무명 메소드?
-        //요거 없으면 에러 발생함
+                tbOutput.AppendText(str); // AppendText로 수정 //오토스크롤되고
+        }       
+       
         delegate void cbAddLabel(string str);
         void AddLabel(string str)
         {
@@ -121,14 +111,14 @@ namespace MyKaTalk
             else
             {
                 sbClientList.DropDownItems.Add(str);
-                sbClientList.Text = str;
+                //sbClientList.Text = str;//
             }
 
         }
 
         bool isAlive(Socket sck) //미완성..
         {
-            if (sck == null) return false;
+            if (sck == null) return false; 
             if (sck.Connected == false) return false;
 
             bool b1 = sck.Poll(1000, SelectMode.SelectRead); //정상(false) 오류(true)
@@ -147,7 +137,7 @@ namespace MyKaTalk
         }
 
         void ServerProcess() // 서버 세션 프로세스
-        {         
+        {
             byte[] buf = new byte[100];
             while (true)
             {
@@ -158,11 +148,13 @@ namespace MyKaTalk
                     tp.Client.Send(Encoding.Default.GetBytes($"REQ:{red}")); // REQ: 연결수립통보 + my IP 수신
                     //GetString(buf, 0, n) 필수: Receive(buf)가 제대로 null 설정 안해줌
                     int n = tp.Client.Receive(buf); 
-                    string sId = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':'); // Out of idx-range Error
-                    //if (sId == "") sId = "Anon"; // 기본 sId: "Anon"
-                    if (sId == "Noname")
+                    string sId = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
+                    string sPw = mylib.GetToken(2, Encoding.Default.GetString(buf, 0, n), ':');
+                    // 보니까 db에 없는 케이스가 문제가 되는거 같은데..
+                    string ret = sqldb.GetString($"select password from users where name ='{sId}'"); 
+                    if (ret == null || sPw != ret) 
                     {
-                        tp.Client.Send(Encoding.Default.GetBytes($"REJECT:사용자명을 변경해주세요"));
+                        tp.Client.Send(Encoding.Default.GetBytes($"REJECT:올바른 사용자가 아닙니다"));
                         tp.Close();
                         AddText($"클라이언트의 접속을 거부했습니다\r\n");
                     }
@@ -171,14 +163,10 @@ namespace MyKaTalk
                         tp.Client.Send(Encoding.Default.GetBytes($"ACK:{red}")); // 체크
                         tcp.Add(new tcpEx(tp, sId)); // List에 추가
                         AddText($"{sId}({red})로부터의 접속\r\n");
-                        AddLabel(sId); // 아래 무명 메소드 방식으로 대체 가능
-                        //if (InvokeRequired)
-                        //{
-                        //    Invoke(new MethodInvoker(delegate() 
-                        //    { sbClientList.DropDownItems.Add(sId); } ));
-                        //}
+                        AddLabel(sId);
+                        checkAttendance(sId); //출석체크                                                   
                     }
-                    //InitServer 에서 서버 리드 스레드 생성함, 여기선 패스
+                    //InitServer 에서 threadRead 생성/관리
                 }
                 Thread.Sleep(100); //while 문의 부담을 줄이기 위함
             }
@@ -195,7 +183,14 @@ namespace MyKaTalk
                     if (tcp[i].tp.Available > 0)
                     {
                         int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
-                        AddText(Encoding.Default.GetString(buf, 0, n));
+                        // msg를 확인해서 퇴실 명령어를 체크
+                        string msg = Encoding.Default.GetString(buf, 0, n);                        
+                        if (msg.StartsWith("/EXIT:"))
+                        {
+                            checkExitClass(msg);
+                        }
+                        else
+                            AddText(msg);
                     }
                 }
                 Thread.Sleep(100);
@@ -232,6 +227,7 @@ namespace MyKaTalk
             threadRead.Start();
 
             AddLabel("모두에게");
+            addDate(); // db에 오늘 날짜 컬럼 새로 만들기
         }
 
         void closeServer()
@@ -276,7 +272,7 @@ namespace MyKaTalk
             int n = sock.Receive(buf);  // REQ: 연결수립통보 + myIP 수신
             string myIP = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
             AddText($"My IP: {myIP}\r\n");
-            sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}"));
+            sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}:{sPWD}")); // 패스워드 추가 전송
 
             n = sock.Receive(buf);  // 최종 수락/거부 통보
             string sRet = mylib.GetToken(0, Encoding.Default.GetString(buf, 0, n), ':');
@@ -307,6 +303,7 @@ namespace MyKaTalk
         private void puSend2Server_Click(object sender, EventArgs e)
         {
             if (sock == null) return;
+            // 서버 끊기면 알아서 사리기
             string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
             byte[] bArr = Encoding.Default.GetBytes(str);
             sock.Send(bArr); // Client -> Server
@@ -397,9 +394,122 @@ namespace MyKaTalk
                 sUID = dlg.tbUserID.Text;
                 sPWD = dlg.tbPassword.Text;
                 operationMode = dlg.rbServer.Checked;
-
             }
 
+        }        
+
+        void checkAttendance(string sId)
+        {
+            //오늘 날짜의 출석 기록이 비어 있으면 출석시간을 기록
+            string sql = $"select {TODAY} from users where name = N'{sId}'";
+            string chk = sqldb.GetString(sql);
+            if (chk == "") // 이거 나중에 정확하게 확인
+            {   // UPDATE users SET _211018 = 1 WHERE code='1'
+                sql = $"UPDATE users SET {TODAY} = N'{currTime()}' where name = N'{sId}'";
+                sqldb.Run(sql);
+            }
+        }
+
+        // 퇴실 확인 기능 
+        // 핸드셰이크 추가할지도
+        void checkExitClass(string msg)
+        {
+            string clientName = msg.Split(':')[1];
+            // N'{}' 명심: 인코딩 관련 매크로임
+            string sql = $"select {TODAY} from users where name =N'{clientName}'";
+            string result = sqldb.GetString(sql);
+            if (result != null) // 출석 시간이 null이 아니면 퇴실 시간을 함께 기록
+            {
+                string begEnd = result + '/' + currTime(); // 인코딩 오류방지용 변수
+                sql = $"UPDATE users SET {TODAY} = N'{begEnd}' where name = N'{clientName}'";
+                sqldb.Run(sql);
+                AddText($"{clientName}이/가 퇴실하였습니다\r\n");
+            }
+        }
+
+        void mnCurrTime_Click(object sender, EventArgs e)
+        {
+            string ct = currDate();
+            MessageBox.Show(ct);
+        }
+
+        //컬럼 '_'
+        void addDate()
+        {
+            string sql = $"ALTER TABLE users ADD {dashDate()} NVARCHAR(20) NULL";
+
+            sqldb.Run(sql); // 중복 있으면 추가 안됨
+        }        
+
+        // returns "211018" -> 이거 날짜 넘어가면 어떻게 처리할거냐?? 일단 패스할까..
+        string currDate()
+        {   // currTime ex) "2021-10-18 오후 4:14:09"
+            DateTime now = DateTime.Now;
+            return now.ToString("yyMMdd"); // mm:분 MM:월
+        }
+
+        string dashDate()
+        {
+            // currTime ex) "2021-10-18 오후 4:14:09"
+            DateTime now = DateTime.Now;
+            string str = "_" + now.ToString("yyMMdd");
+            return str; // mm:분 MM:월
+        }
+
+        // returns "18:45"
+        string currTime()
+        {
+            DateTime now = DateTime.Now;
+            return now.ToString("HH:mm");
+        }
+
+        private void mnAddDate_Click(object sender, EventArgs e)
+        {
+            addDate();
+        }
+
+        private void mnShowDB_Click(object sender, EventArgs e)
+        {
+            frmDB dlg = new frmDB(connString);
+            dlg.Show();
+        }
+
+        //학생 추가
+        private void mnAddStudent_Click(object sender, EventArgs e)
+        {
+            frmAddStudent dlg = new frmAddStudent();
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                string code = dlg.tbStudentCode.Text;
+                string name = dlg.tbStudentName.Text;
+                string pass = dlg.tbStudentPwrd.Text;
+                // N'{}' : '{}'의 문자열이 유니코드임을 말해주는 매크로
+                string sql = $"INSERT INTO users (code, name, password) VALUES (N'{code}', N'{name}', N'{pass}'); ";
+                sqldb.Run(sql);
+            }
+
+        }
+
+        private void mnDEBUG_Click(object sender, EventArgs e)
+        {
+            string sNull = null;
+            string empty = "";
+            string emoty2 = string.Empty;
+
+            if (sNull == empty)
+                tbOutput.Text += "";
+        }
+
+        // 퇴실 버튼: 오늘 날짜 칼럼에 기록이 있으면 퇴실 신호를 전송
+        private void mnExitClass_Click(object sender, EventArgs e)
+        {
+            if (sock == null) return;
+            // 서버 끊기면 알아서 사리기
+            string str = $"/EXIT:{sUID}"; //EXIT 명령어 + 사용자명
+            byte[] bArr = Encoding.Default.GetBytes(str);
+            sock.Send(bArr);
+            // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
+            AddText("퇴실했습니다\r\n");
         }
     }
 }
