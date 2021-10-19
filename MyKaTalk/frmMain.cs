@@ -186,7 +186,7 @@ namespace MyKaTalk
                     string sId = mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
                     string sPw = mylib.GetToken(2, Encoding.Default.GetString(buf, 0, n), ':');
                     // 보니까 db에 없는 케이스가 문제가 되는거 같은데..
-                    string ret = sqldb.GetString($"select password from users where name ='{sId}'"); 
+                    string ret = sqldb.GetString($"select password from users where name = N'{sId}'"); //
                     if (ret == null || sPw != ret) 
                     {
                         tp.Client.Send(Encoding.Default.GetBytes($"REJECT:올바른 사용자가 아닙니다"));
