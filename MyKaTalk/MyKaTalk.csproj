@@ -33,8 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="myLibrary">
-      <HintPath>..\..\myLibrary\myLibrary\bin\Debug\myLibrary.dll</HintPath>
+    <Reference Include="myLibrary, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\myLibrary\myLibrary\bin\Debug\myLibrary.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

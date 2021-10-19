@@ -20,7 +20,6 @@ C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.exe.co
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.exe
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.pdb
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\myLibrary.pdb
-C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.AssemblyReference.cache
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmAddStudent.resources
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmDB.resources
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmClient.resources
@@ -33,3 +32,4 @@ C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.CopyComplete
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.exe
 C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.pdb
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\myLibrary.dll
