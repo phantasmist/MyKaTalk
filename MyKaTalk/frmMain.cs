@@ -236,8 +236,8 @@ namespace MyKaTalk
             byte[] buf = new byte[BUF_SIZE];
             while (true)
             {
-                try
-                {
+                //try
+                //{
                     if (isAlive(sock) || sock.Available > 0)      // socket이 살아있다면 + socket에 읽어올 것이 있다면             ************************* 오른쪽이 0이라서 else
                     {
                         int n = sock.Receive(buf);
@@ -250,12 +250,12 @@ namespace MyKaTalk
                         MessageBox.Show("Server와의 연결이 끊어졌습니다.");
                         break;                    // Server 연결된 상태에서 Server 끄고 Client 메시지 던지면 socket null로 탈출하는 것 방지
                     }
-                }
-                catch (Exception e1)
-                {                                           // 
-                    MessageBox.Show(e1.Message);
-                    threadClient.Abort();
-                }
+                //}
+                //catch (Exception e1)
+                //{                                           // 
+                //    MessageBox.Show(e1.Message);
+                //    threadClient.Abort();
+                //}
                 Thread.Sleep(100);
             }
 
