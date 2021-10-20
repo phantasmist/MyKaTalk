@@ -37,7 +37,7 @@ namespace MyKaTalk
         {
             try
             {
-                string sql = "select * from users";
+                string sql = "SELECT * FROM users ORDER BY code";
                 sqlCmd.CommandText = sql;
                 //string.Trim()으로 string 전후의 whitespace 제거
                 string sCmd = sql.Trim().Substring(0, 6);
@@ -64,6 +64,11 @@ namespace MyKaTalk
                         }
                     }
                     sdr.Close();
+                    // 소팅 기능 비활성화, 항상 addDate() 다음에 실행되기 때문에 걱정X
+                    foreach (DataGridViewColumn column in dbGrid.Columns)
+                    {
+                        column.SortMode = DataGridViewColumnSortMode.NotSortable;
+                    }
                 }
             }
             catch (Exception e1)
