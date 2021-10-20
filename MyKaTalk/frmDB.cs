@@ -64,7 +64,7 @@ namespace MyKaTalk
                         }
                     }
                     sdr.Close();
-                    // 소팅 기능 비활성화, 항상 addDate 다음에 활성화 되니까 ㄱㅊ
+                    // 소팅 기능 비활성화, 항상 addDate() 다음에 실행되기 때문에 걱정X
                     foreach (DataGridViewColumn column in dbGrid.Columns)
                     {
                         column.SortMode = DataGridViewColumnSortMode.NotSortable;
