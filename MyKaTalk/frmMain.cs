@@ -39,14 +39,14 @@ namespace MyKaTalk
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
         // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
-        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
+        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\KOSTA\source\repos\MyKaTalk\MyKaTalk\bin\Debug\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
         int serverPort = 9000;
         string connectIP = "127.0.0.1";
         int connectPort = 9000;
         // true: server, false: client
-        bool operationMode = true; 
+        bool operationMode = true;
 
         string sUID = "Noname";
         string sPWD = "";
@@ -57,6 +57,11 @@ namespace MyKaTalk
 
         private void Initialization()
         {
+            if (listen != null) listen.Stop();
+            if (threadClient != null) threadClient.Abort();
+            if (threadRead != null) threadRead.Abort();
+            if (threadServer != null) threadServer.Abort();
+            if (filethread != null) filethread.Abort();
             sock = null;
             tcp = new List<tcpEx>();
             listen = null;
@@ -72,11 +77,6 @@ namespace MyKaTalk
 
             tbInput.Text = "";
             tbOutput.Text = "";
-
-            if (threadClient != null) threadClient.Abort();
-            if (threadRead != null) threadRead.Abort();
-            if (threadServer != null) threadServer.Abort();
-            if (filethread != null) filethread.Abort();
         }
 
         private void frmMain_Load(object sender, EventArgs e)
@@ -413,21 +413,8 @@ namespace MyKaTalk
 
         void closeServer()
         {
-            try
-            {
-
-                if (listen != null) listen.Stop();
-                if (threadServer != null) threadServer.Abort();
-                if (threadRead != null) threadRead.Abort();
-                if (filethread != null) filethread.Abort();
-                AddText($"서버를 닫습니다. Port: [{serverPort}]\r\n", Color.Red);
-            }
-            catch (Exception e1)
-            {
-                MessageBox.Show(e1.Message);
-                Initialization();
-            }
-            //if (timer1.Enabled) timer1.Stop();                            // 수정, timer1 지금 안 씀
+            AddText($"서버를 닫습니다. Port: [{serverPort}]\r\n", Color.Red);
+            Initialization();
         }
 
 
@@ -660,19 +647,34 @@ namespace MyKaTalk
                 AddText($"{clientName}이/가 퇴실하였습니다\r\n", Color.Silver);
             }
 
-            List<int> removeIdx = new List<int>(); //제거할 인덱스 리스트
-            // for 문으로 드랍다운아이템을 전부 조회하고 해당 아이템을 삭제
-            for(int i = 0; i < sbClientList.DropDownItems.Count; i++)
+            Listout(clientName);
+        }
+
+        delegate void cbListout(string clientName);
+        //TODO: 복수의 다중로그인이 발생하면 out of idx error 발생: 지금 해결하기엔 시간 부족
+        void Listout(string clientName)//수정중
+        {
+            if (this.statusBar.InvokeRequired)
             {
-                
-                if(sbClientList.DropDownItems[i].Text == clientName)
-                {
-                    removeIdx.Add(i);
-                }
+                cbListout lo = new cbListout(Listout);
+                object[] obj = { clientName };
+                Invoke(lo, obj);
             }
-            foreach(int idx in removeIdx)
+            else
             {
-                sbClientList.DropDownItems.RemoveAt(idx);
+                List<int> removeIdx = new List<int>(); //제거할 인덱스 리스트
+                                                       // for 문으로 드랍다운아이템을 전부 조회하고 해당 아이템을 삭제
+                for (int i = 0; i < sbClientList.DropDownItems.Count; i++)
+                {
+                    if (sbClientList.DropDownItems[i].Text == clientName)
+                    {
+                        removeIdx.Add(i);
+                    }
+                }
+                foreach (int idx in removeIdx)
+                {
+                    sbClientList.DropDownItems.RemoveAt(idx);
+                }
             }
         }
 
@@ -759,6 +761,7 @@ namespace MyKaTalk
                 sock.Send(bArr);
             // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
             AddText("퇴실했습니다\r\n", Color.Silver);
+            Initialization();
         }
 
         // 퇴실 버튼: 오늘 날짜 칼럼에 기록이 있으면 퇴실 신호를 전송
