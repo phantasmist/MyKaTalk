@@ -32,9 +32,9 @@ namespace MyKaTalk
             this.dbGrid = new System.Windows.Forms.DataGridView();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.메뉴ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.sthToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.sthToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dbGrid)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
@@ -49,6 +49,7 @@ namespace MyKaTalk
             this.dbGrid.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.dbGrid.Location = new System.Drawing.Point(12, 46);
             this.dbGrid.Name = "dbGrid";
+            this.dbGrid.ReadOnly = true;
             this.dbGrid.RowHeadersWidth = 51;
             this.dbGrid.RowTemplate.Height = 27;
             this.dbGrid.Size = new System.Drawing.Size(618, 275);
@@ -73,6 +74,13 @@ namespace MyKaTalk
             this.메뉴ToolStripMenuItem.Size = new System.Drawing.Size(53, 24);
             this.메뉴ToolStripMenuItem.Text = "메뉴";
             // 
+            // sthToolStripMenuItem
+            // 
+            this.sthToolStripMenuItem.Name = "sthToolStripMenuItem";
+            this.sthToolStripMenuItem.Size = new System.Drawing.Size(112, 26);
+            this.sthToolStripMenuItem.Text = "sth";
+            this.sthToolStripMenuItem.Click += new System.EventHandler(this.sthToolStripMenuItem_Click);
+            // 
             // statusStrip1
             // 
             this.statusStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
@@ -89,13 +97,6 @@ namespace MyKaTalk
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(152, 20);
             this.toolStripStatusLabel1.Text = "toolStripStatusLabel1";
-            // 
-            // sthToolStripMenuItem
-            // 
-            this.sthToolStripMenuItem.Name = "sthToolStripMenuItem";
-            this.sthToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.sthToolStripMenuItem.Text = "sth";
-            this.sthToolStripMenuItem.Click += new System.EventHandler(this.sthToolStripMenuItem_Click);
             // 
             // frmDB
             // 
