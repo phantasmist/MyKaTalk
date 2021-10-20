@@ -158,13 +158,24 @@ namespace MyKaTalk
 
         bool isAlive(Socket sck) //미완성..
         {
-            if (sck == null) return false;
-            if (sck.Connected == false) return false;
+            if (sck == null)
+            {
+                Initialization();
+                return false;
+            }
+            if (sck.Connected == false)
+            {
+                Initialization();
+                return false;
+            }
 
             bool b1 = sck.Poll(1000, SelectMode.SelectRead); //정상(false) 오류(true)
             bool b2 = (sck.Available == 0); //오류(true) 정상(false)    /
-            if (b1 && b2) return false;
-
+            if (b1 && b2)
+            {
+                Initialization();
+                return false;
+            }
             //return true;
 
             // 아래 더 있는 게
@@ -299,9 +310,12 @@ namespace MyKaTalk
                     }
                 }
                 catch (Exception e1)
-                {                                           
+                {
                     //MessageBox.Show(e1.Message);
-                    threadClient.Abort();
+                    if (threadClient != null)
+                    {
+                        threadClient.Abort(); 
+                    }
                 }
                 Thread.Sleep(100);
             }
@@ -759,8 +773,12 @@ namespace MyKaTalk
             string Filename;
             byte[] buf = new byte[FILE_BUF];
             openFileDialog1.FileName = "";
-            openFileDialog1.Filter = "모든파일(*.*) | *.*; | 텍스트 파일(.txt) | *.txt;*.TXT | 이미지 파일(.png,.bmp,.jpg,.gif) | *.png; *.bmp; *.jpg; *.gif";
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            openFileDialog1.Filter = "모든파일(*.*) | *.*; | 텍스트 파일(.txt) | *.txt;*.TXT | 이미지 파일(.png,.bmp,.jpg,.gif) | *.png; *.bmp; *.jpg; *.gif"; https://github.com/phantasmist/MyKaTalk.git
+            if (threadClient == null && threadRead == null)
+            {
+                AddText("파일 전송 실패 : 연결된 사용자가 없습니다. \r\n", Color.DarkRed);
+            }
+            else if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
                 sendFile = openFileDialog1.FileName;
                 Filename = Path.GetFileName(openFileDialog1.FileName);
