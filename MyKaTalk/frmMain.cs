@@ -1,15 +1,11 @@
 ﻿using myLibrary;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Data.SqlClient;
 using System.Drawing;
-using System.Linq;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MyKaTalk
@@ -21,8 +17,10 @@ namespace MyKaTalk
             InitializeComponent();
         }
 
-        //global var
+        #region global var
+
         const int BUF_SIZE = 512;
+        const int FILE_BUF = 134217728;
         //const int NUMTCP = 10; //tcp 배열 개수
 
         Socket sock = null;   //서버 입장에서 socket, 클라이언트 입장에선 원서버로 구동
@@ -34,10 +32,13 @@ namespace MyKaTalk
         Thread threadRead = null; //Server용 Read thread
         Thread threadClient = null; //Client용 Read thread
 
+        Thread filethread = null; //FileRead thread
+        string FileName = "";
+        int filemode = 0;
         // static 효과 검색
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
-        // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30"
+        // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
@@ -51,6 +52,8 @@ namespace MyKaTalk
         string TODAY = "";
 
         iniFile ini = new iniFile(@".\chat.ini");
+        #endregion
+
         private void Initialization()
         {
             sock = null;
@@ -72,6 +75,7 @@ namespace MyKaTalk
             if (threadClient != null) threadClient.Abort();
             if (threadRead != null) threadRead.Abort();
             if (threadServer != null) threadServer.Abort();
+            if (filethread != null) filethread.Abort();
         }
 
         private void frmMain_Load(object sender, EventArgs e)
@@ -107,21 +111,25 @@ namespace MyKaTalk
         }
 
 
-        delegate void cbAddText(string str); //delegate 방식
-        void AddText(string str)
+        delegate void cbAddText(string str, Color col); //delegate 방식
+        void AddText(string str, Color col)
         {
             try
             {
                 if (tbOutput.Text != null)       // Client, Server 안 켜고 그냥 창 닫은 경우의 에러 방지
                 {
-                    if (tbOutput.InvokeRequired)
+                    if (this.tbOutput.InvokeRequired)
                     {
                         cbAddText cb = new cbAddText(AddText);
-                        object[] obj = { str };
+                        object[] obj = { str, col };
                         Invoke(cb, obj);
                     }
                     else
+                    {
+                        tbOutput.SelectionColor = col;
                         tbOutput.AppendText(str); // AppendText로 수정 //오토스크롤되고
+                        tbOutput.SelectionColor = Color.Black;
+                    }
                 }
             }
             catch (Exception e1)
@@ -190,13 +198,13 @@ namespace MyKaTalk
                     {
                         tp.Client.Send(Encoding.Default.GetBytes($"REJECT:올바른 사용자가 아닙니다"));
                         tp.Close();
-                        AddText($"클라이언트의 접속을 거부했습니다\r\n");
+                        AddText($"클라이언트의 접속을 거부했습니다\r\n", Color.Red);
                     }
                     else
                     {
                         tp.Client.Send(Encoding.Default.GetBytes($"ACK:{red}")); // 체크
                         tcp.Add(new tcpEx(tp, sId)); // List에 추가
-                        AddText($"{sId}({red})로부터의 접속\r\n");
+                        AddText($"{sId}({red})로부터의 접속\r\n", Color.Blue);
                         AddLabel(sId);
                         checkAttendance(sId); //출석체크                                                   
                     }
@@ -216,17 +224,28 @@ namespace MyKaTalk
                 {
                     if (tcp[i].tp.Available > 0)
                     {
-                        int n = tcp[i].tp.Client.Receive(buf); //socket 멤버 Client 이용
-                        //string getstr = Encoding.Default.GetString(buf, 0, n);
-                        //AddText(Encoding.Default.GetString(buf, 0, n));
-                        // msg를 확인해서 퇴실 명령어를 체크
+                        int n = tcp[i].tp.Client.Receive(buf);
                         string msg = Encoding.Default.GetString(buf, 0, n);
-                        if (msg.StartsWith("/EXIT:"))
+                        if (msg.Split('|')[0].Trim() == "File")
+                        {
+                            if (filemode != 1)
+                            {
+                                FileName = Encoding.Default.GetString(buf, 0, n).Split('|')[1].Trim();
+                                AddText(Encoding.Default.GetString(buf, 0, n).Split('|')[2].Trim(), Color.FromArgb(0, 255, 0));
+                                AddText("\r\n", Color.FromArgb(0, 255, 0));
+                                filemode = 1;
+                                filethread = new Thread(FileProcess);
+                                filethread.Start();
+                            }
+                        }
+                        else if (msg.StartsWith("/EXIT:"))
                         {
                             checkExitClass(msg);
                         }
                         else
-                            AddText(msg);
+                        {
+                            AddText(msg, Color.Black);
+                        }
                         for (int k = 0; k < tcp.Count; k++)
                         {
                             TcpClient tp = tcp[k].tp;
@@ -251,7 +270,22 @@ namespace MyKaTalk
                     if (isAlive(sock) || sock.Available > 0)      // socket이 살아있다면 + socket에 읽어올 것이 있다면             ************************* 오른쪽이 0이라서 else
                     {
                         int n = sock.Receive(buf);
-                        AddText(Encoding.Default.GetString(buf, 0, n));
+                        if (Encoding.Default.GetString(buf, 0, n).Split('|')[0].Trim() == "File")
+                        {
+                            if (filemode != 2)
+                            {
+                                FileName = Encoding.Default.GetString(buf, 0, n).Split('|')[1].Trim();
+                                AddText(Encoding.Default.GetString(buf, 0, n).Split('|')[2].Trim(), Color.FromArgb(0, 255, 0));
+                                AddText("\r\n", Color.FromArgb(0, 255, 0));
+                                filemode = 2;
+                                filethread = new Thread(FileProcess);
+                                filethread.Start();
+                            }
+                        }
+                        else
+                        {
+                            AddText(Encoding.Default.GetString(buf, 0, n), Color.Black);
+                        }
                     }
                     else
                     {
@@ -269,6 +303,67 @@ namespace MyKaTalk
                 Thread.Sleep(100);
             }
 
+        }
+        void FileProcess()
+        {
+            byte[] buf = new byte[FILE_BUF];
+            if (filemode == 1)
+            {
+                while (true)
+                {
+                    for (int i = 0; i < tcp.Count; i++)
+                    {
+                        if (tcp[i].tp.Available > 0)
+                        {
+                            int n = tcp[i].tp.Client.Receive(buf);
+                            string filenamestr;
+                            if (FileName != "")
+                            {
+                                filenamestr = @"" + FileName;
+                            }
+                            else
+                            {
+                                filenamestr = @"downFile";
+                            }
+                            FileStream fs = new FileStream(filenamestr, FileMode.Create);
+                            fs.Write(buf, 0, n);
+                            buf = Encoding.Default.GetBytes("");
+                            fs.Flush();
+                            fs.Close();
+                            filemode = 0;
+                            FileName = "";
+                            filethread.Abort();
+                        }
+                    }
+                }
+            }
+            else if (filemode == 2)
+            {
+                while (true)
+                {
+                    if (sock.Available > 0)
+                    {
+                        int n = sock.Receive(buf);
+                        string filenamestr;
+                        if (FileName != "")
+                        {
+                            filenamestr = @"" + FileName;
+                        }
+                        else
+                        {
+                            filenamestr = @"downFile";
+                        }
+                        FileStream fs = new FileStream(filenamestr, FileMode.Create);
+                        fs.Write(buf, 0, n);
+                        buf = Encoding.Default.GetBytes("");
+                        fs.Flush();
+                        fs.Close();
+                        filemode = 0;
+                        FileName = "";
+                        filethread.Abort();
+                    }
+                }
+            }
         }
 
         void initServer(int serverPort) // input은 수정할지도..
@@ -288,7 +383,7 @@ namespace MyKaTalk
                 threadRead = new Thread(ReadProcess); //1대다 세션 위해 이동
                 threadRead.Start();
 
-                AddText($"Server started @ Port: [{serverPort}]\r\n");
+                AddText($"Server started @ Port: [{serverPort}]\r\n", Color.Blue);
                 AddLabel("모두에게");                                           // server 되면 생기게 위로 옮김
             }
             catch (Exception e2)
@@ -306,7 +401,8 @@ namespace MyKaTalk
                 if (listen != null) listen.Stop();
                 if (threadServer != null) threadServer.Abort();
                 if (threadRead != null) threadRead.Abort();
-                AddText($"서버를 닫습니다. Port: [{serverPort}]\r\n");
+                if (filethread != null) filethread.Abort();
+                AddText($"서버를 닫습니다. Port: [{serverPort}]\r\n", Color.Red);
             }
             catch (Exception e1)
             {
@@ -323,6 +419,7 @@ namespace MyKaTalk
             {
                 if (MessageBox.Show("서버를 다시 열겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
                 if (threadRead != null) threadRead.Abort();
+                if (filethread != null) filethread.Abort();
                 threadServer.Abort();
             }
             operationMode = true; // Server Mode
@@ -342,6 +439,7 @@ namespace MyKaTalk
                 {
                     if (MessageBox.Show("연결을 다시 수립하시겠습니까?", "", MessageBoxButtons.YesNo) == DialogResult.No) return;
                     if (threadClient != null) threadClient.Abort();
+                    if (filethread != null) filethread.Abort();
                     sock.Close();
                 }
                 operationMode = false; // 자동으로 클라이언트 모드로 진입
@@ -352,14 +450,14 @@ namespace MyKaTalk
                 //아래는 handshake 과정임
                 int n = sock.Receive(buf);  // REQ: 연결수립통보 + myIP 수신
                 string myIP = myLibrary.mylib.GetToken(1, Encoding.Default.GetString(buf, 0, n), ':');
-                AddText($"My IP: {myIP}\r\n");
+                AddText($"My IP: {myIP}\r\n", Color.Blue);
                 sock.Send(Encoding.Default.GetBytes($"NAM:{sUID}:{sPWD}")); // 패스워드 추가 전송  ******
 
                 n = sock.Receive(buf);  // 최종 수락/거부 통보
                 string sRet = mylib.GetToken(0, Encoding.Default.GetString(buf, 0, n), ':');
                 if (sRet == "REJECT")
                 {
-                    AddText($"Server[{connectIP}:{connectPort}]로부터 접속이 거부되었습니다\r\n");
+                    AddText($"Server[{connectIP}:{connectPort}]로부터 접속이 거부되었습니다\r\n", Color.Red);
                     return;
                 }
                 //클라이언트용 소켓 스레드
@@ -367,7 +465,7 @@ namespace MyKaTalk
                 threadClient.Start(); // 요게 없어서 read를 못했음..
                 tbInput.Text = "";
                 //안내 메세지
-                AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n");
+                AddText($"Server[{connectIP}:{connectPort}]로 연결되었습니다\r\n", Color.Blue);
                 sbClientList2.Text = $"{sUID}";
                 sbLabel1.Text = $"{connectIP}";
             }
@@ -419,6 +517,7 @@ namespace MyKaTalk
                 //close threads when program ends
                 closeServer();
                 if (threadClient != null) threadClient.Abort();
+                if (filethread != null) filethread.Abort();
                 if (sock != null) sock.Close(); //이거 없으면 sock이 사는듯
 
                 //프로그램 위치,크기 ini에 기록
@@ -458,11 +557,10 @@ namespace MyKaTalk
                             if(isAlive(tp.Client)) // 살아있다면..
                             {
                                 tp.Client.Send(Encoding.Default.GetBytes($" KOSTA : {tbInput.Text.Trim()}\r\n"));
-                                AddText($" KOSTA : {tbInput.Text.Trim()}\r\n"); // 자기화면에 표시
+                                AddText($" KOSTA : {tbInput.Text.Trim()}\r\n", Color.Black); // 자기화면에 표시
                             }                               
                         }
                     }
-                    AddText($" KOSTA : {tbInput.Text.Trim()}\r\n");
                     tbInput.Text = "";
                 }
                 else // Client Mode
@@ -472,12 +570,12 @@ namespace MyKaTalk
                         if (isAlive(sock))
                         {
                             sock.Send(Encoding.Default.GetBytes($" {sUID} : {tbInput.Text.Trim()} \r\n"));
-                            AddText($" {sUID} : {tbInput.Text.Trim()}\r\n"); // 자기 화면에 기록
+                            AddText($" {sUID} : {tbInput.Text.Trim()}\r\n", Color.Black); // 자기 화면에 기록
                             tbInput.Text = "";
                         }
                         else
                         {
-                            AddText("Server Connection lost\r\n");
+                            AddText("Server Connection lost\r\n", Color.Black);
                             sock.Close();
                             sock = null;
                         }
@@ -537,7 +635,7 @@ namespace MyKaTalk
                 string begEnd = result + '/' + currTime(); // 인코딩 오류방지용 변수
                 sql = $"UPDATE users SET {TODAY} = N'{begEnd}' where name = N'{clientName}'";
                 sqldb.Run(sql);
-                AddText($"{clientName}이/가 퇴실하였습니다\r\n");
+                AddText($"{clientName}이/가 퇴실하였습니다\r\n", Color.Silver);
             }
         }
 
@@ -623,7 +721,52 @@ namespace MyKaTalk
             byte[] bArr = Encoding.Default.GetBytes(str);
             sock.Send(bArr);
             // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
-            AddText("퇴실했습니다\r\n");
+            AddText("퇴실했습니다\r\n", Color.Silver);
+        }
+
+        private void fsms_Click(object sender, EventArgs e)
+        {
+            string sendFile;
+            string Filename;
+            byte[] buf = new byte[FILE_BUF];
+            openFileDialog1.FileName = "";
+            openFileDialog1.Filter = "모든파일(*.*) | *.*; | 텍스트 파일(.txt) | *.txt;*.TXT | 이미지 파일(.png,.bmp,.jpg,.gif) | *.png; *.bmp; *.jpg; *.gif";
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                sendFile = openFileDialog1.FileName;
+                Filename = Path.GetFileName(openFileDialog1.FileName);
+                if (operationMode)
+                {
+                    if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        for (int i = 0; i < tcp.Count; i++)
+                        {
+                            tcp[i].tp.Client.Send(Encoding.Default.GetBytes($"File | {Filename} | 서버로부터 파일전송입니다.\r\n"));
+                        }
+                        for (int i = 0; i < tcp.Count; i++)
+                        {
+                            tcp[i].tp.Client.SendFile(sendFile);
+                        }
+                    }
+                }
+                else
+                {
+                    sock.Send(Encoding.Default.GetBytes($"File | {Filename} | 클라이언트로부터 파일전송입니다.\r\n"));
+
+                    if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    {
+                        sock.SendFile(sendFile);
+                    }
+                }
+            }
+        }
+
+        private void tbInput_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                tbInput.Text = ""; 
+            }
         }
     }
 }

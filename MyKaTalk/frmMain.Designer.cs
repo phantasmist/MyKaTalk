@@ -46,17 +46,19 @@ namespace MyKaTalk
             this.mnCurrTime = new System.Windows.Forms.ToolStripMenuItem();
             this.mnAddDate = new System.Windows.Forms.ToolStripMenuItem();
             this.mnDEBUG = new System.Windows.Forms.ToolStripMenuItem();
+            this.fsms = new System.Windows.Forms.ToolStripMenuItem();
             this.statusBar = new System.Windows.Forms.StatusStrip();
             this.sbLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.sbClientList = new System.Windows.Forms.ToolStripDropDownButton();
-            this.tbOutput = new System.Windows.Forms.TextBox();
+            this.sbClientList2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.tbInput = new System.Windows.Forms.TextBox();
             this.popInput = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.puSend2Server = new System.Windows.Forms.ToolStripMenuItem();
             this.puSend2Client = new System.Windows.Forms.ToolStripMenuItem();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.tbOutput = new System.Windows.Forms.RichTextBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.sbClientList2 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.mainMenu.SuspendLayout();
             this.statusBar.SuspendLayout();
             this.popInput.SuspendLayout();
@@ -73,7 +75,8 @@ namespace MyKaTalk
             this.menuToolStripMenuItem,
             this.sthToolStripMenuItem,
             this.elseToolStripMenuItem,
-            this.출석표조회ToolStripMenuItem});
+            this.출석표조회ToolStripMenuItem,
+            this.fsms});
             this.mainMenu.Location = new System.Drawing.Point(0, 0);
             this.mainMenu.Name = "mainMenu";
             this.mainMenu.Padding = new System.Windows.Forms.Padding(5, 2, 0, 2);
@@ -189,6 +192,13 @@ namespace MyKaTalk
             this.mnDEBUG.Text = "DEBUG";
             this.mnDEBUG.Click += new System.EventHandler(this.mnDEBUG_Click);
             // 
+            // fsms
+            // 
+            this.fsms.Name = "fsms";
+            this.fsms.Size = new System.Drawing.Size(64, 20);
+            this.fsms.Text = "FileSend";
+            this.fsms.Click += new System.EventHandler(this.fsms_Click);
+            // 
             // statusBar
             // 
             this.statusBar.ImageScalingSize = new System.Drawing.Size(20, 20);
@@ -196,7 +206,7 @@ namespace MyKaTalk
             this.sbLabel1,
             this.sbClientList,
             this.sbClientList2});
-            this.statusBar.Location = new System.Drawing.Point(0, 320);
+            this.statusBar.Location = new System.Drawing.Point(0, 424);
             this.statusBar.Name = "statusBar";
             this.statusBar.Padding = new System.Windows.Forms.Padding(1, 0, 12, 0);
             this.statusBar.Size = new System.Drawing.Size(322, 22);
@@ -219,20 +229,13 @@ namespace MyKaTalk
             this.sbClientList.Text = "ClientList";
             this.sbClientList.DropDownItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.sbClientList_DropDownItemClicked);
             // 
-            // tbOutput
+            // sbClientList2
             // 
-            this.tbOutput.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.tbOutput.BackColor = System.Drawing.SystemColors.Info;
-            this.tbOutput.Location = new System.Drawing.Point(3, 2);
-            this.tbOutput.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.tbOutput.Multiline = true;
-            this.tbOutput.Name = "tbOutput";
-            this.tbOutput.ReadOnly = true;
-            this.tbOutput.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.tbOutput.Size = new System.Drawing.Size(316, 182);
-            this.tbOutput.TabIndex = 2;
+            this.sbClientList2.Name = "sbClientList2";
+            this.sbClientList2.Size = new System.Drawing.Size(189, 17);
+            this.sbClientList2.Spring = true;
+            this.sbClientList2.Text = " ";
+            this.sbClientList2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // tbInput
             // 
@@ -244,9 +247,10 @@ namespace MyKaTalk
             this.tbInput.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.tbInput.Multiline = true;
             this.tbInput.Name = "tbInput";
-            this.tbInput.Size = new System.Drawing.Size(316, 75);
+            this.tbInput.Size = new System.Drawing.Size(316, 146);
             this.tbInput.TabIndex = 3;
             this.tbInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbInput_KeyDown);
+            this.tbInput.KeyUp += new System.Windows.Forms.KeyEventHandler(this.tbInput_KeyUp);
             // 
             // popInput
             // 
@@ -288,29 +292,39 @@ namespace MyKaTalk
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.tbInput);
-            this.splitContainer1.Size = new System.Drawing.Size(322, 294);
-            this.splitContainer1.SplitterDistance = 186;
-            this.splitContainer1.SplitterWidth = 16;
+            this.splitContainer1.Size = new System.Drawing.Size(322, 398);
+            this.splitContainer1.SplitterDistance = 251;
+            this.splitContainer1.SplitterWidth = 1;
             this.splitContainer1.TabIndex = 4;
             // 
-            // sbClientList2
+            // tbOutput
             // 
-            this.sbClientList2.Name = "sbClientList2";
-            this.sbClientList2.Size = new System.Drawing.Size(158, 17);
-            this.sbClientList2.Spring = true;
-            this.sbClientList2.Text = " ";
-            this.sbClientList2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.tbOutput.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.tbOutput.BackColor = System.Drawing.SystemColors.Info;
+            this.tbOutput.Location = new System.Drawing.Point(0, 0);
+            this.tbOutput.Name = "tbOutput";
+            this.tbOutput.ReadOnly = true;
+            this.tbOutput.Size = new System.Drawing.Size(319, 248);
+            this.tbOutput.TabIndex = 0;
+            this.tbOutput.Text = "";
+            // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.FileName = "openFileDialog1";
             // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(322, 342);
+            this.ClientSize = new System.Drawing.Size(322, 446);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.statusBar);
             this.Controls.Add(this.mainMenu);
             this.MainMenuStrip = this.mainMenu;
             this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.MinimumSize = new System.Drawing.Size(300, 485);
             this.Name = "frmMain";
             this.Text = "MyKaTalk";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmMain_FormClosing);
@@ -321,7 +335,6 @@ namespace MyKaTalk
             this.statusBar.PerformLayout();
             this.popInput.ResumeLayout(false);
             this.splitContainer1.Panel1.ResumeLayout(false);
-            this.splitContainer1.Panel1.PerformLayout();
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
@@ -339,7 +352,6 @@ namespace MyKaTalk
         private System.Windows.Forms.ToolStripMenuItem elseToolStripMenuItem;
         private System.Windows.Forms.StatusStrip statusBar;
         private System.Windows.Forms.ToolStripStatusLabel sbLabel1;
-        private System.Windows.Forms.TextBox tbOutput;
         private System.Windows.Forms.TextBox tbInput;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.ContextMenuStrip popInput;
@@ -359,6 +371,9 @@ namespace MyKaTalk
         private System.Windows.Forms.ToolStripMenuItem mnDEBUG;
         private System.Windows.Forms.ToolStripMenuItem mnExitClass;
         private System.Windows.Forms.ToolStripStatusLabel sbClientList2;
+        private System.Windows.Forms.ToolStripMenuItem fsms;
+        private System.Windows.Forms.RichTextBox tbOutput;
+        private System.Windows.Forms.OpenFileDialog openFileDialog1;
     }
 }
 

@@ -1,0 +1,6 @@
+GroupBox -> MFC에선 기능 없는 테두리
+	 -> C#에선 실제 클래스들을 예속할 수 있음:
+		여기에 예속된 클래스는 GroupBox의 하위 클래스가 된다
+
+LT(Left Top) 좌상단 기준 Location (Dialog.Location)
+		
