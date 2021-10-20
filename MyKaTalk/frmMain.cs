@@ -20,6 +20,7 @@ namespace MyKaTalk
         #region global var
 
         const int BUF_SIZE = 512;
+        const int FILE_BUF = 134217728;
         //const int NUMTCP = 10; //tcp 배열 개수
 
         Socket sock = null;   //서버 입장에서 socket, 클라이언트 입장에선 원서버로 구동
@@ -37,8 +38,8 @@ namespace MyKaTalk
         // static 효과 검색
         // 가능하면 상대경로 설정
         // 이거 한줄만 바뀌면 frmDB도 자동 변경됨..
-        // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30"
-        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\Kim\source\repos\MyKaTalk\MyKaTalk\bin\Debug\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
+        // 경로 static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
+        static string connString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\phantasmist\source\repos\myDataBase.mdf;Integrated Security=True;Connect Timeout=30";
         SqlDB sqldb = new SqlDB(connString);
 
         int serverPort = 9000;
@@ -305,7 +306,7 @@ namespace MyKaTalk
         }
         void FileProcess()
         {
-            byte[] buf = new byte[BUF_SIZE];
+            byte[] buf = new byte[FILE_BUF];
             if (filemode == 1)
             {
                 while (true)
@@ -727,7 +728,7 @@ namespace MyKaTalk
         {
             string sendFile;
             string Filename;
-            byte[] buf = new byte[BUF_SIZE];
+            byte[] buf = new byte[FILE_BUF];
             openFileDialog1.FileName = "";
             openFileDialog1.Filter = "모든파일(*.*) | *.*; | 텍스트 파일(.txt) | *.txt;*.TXT | 이미지 파일(.png,.bmp,.jpg,.gif) | *.png; *.bmp; *.jpg; *.gif";
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
