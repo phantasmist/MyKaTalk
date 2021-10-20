@@ -45,7 +45,8 @@ namespace MyKaTalk
         int serverPort = 9000;
         string connectIP = "127.0.0.1";
         int connectPort = 9000;
-        bool operationMode = true; // true: server, false: client
+        // true: server, false: client
+        bool operationMode = true; 
 
         string sUID = "Noname";
         string sPWD = "";
@@ -69,8 +70,8 @@ namespace MyKaTalk
             string sUID = "Noname";
             string sPWD = "";
 
-            tbInput = null;
-            tbOutput = null;
+            tbInput.Text = "";
+            tbOutput.Text = "";
 
             if (threadClient != null) threadClient.Abort();
             if (threadRead != null) threadRead.Abort();
@@ -518,6 +519,8 @@ namespace MyKaTalk
             try
             {
                 //clientMode 일 경우 EXIT 보내고 종료
+                if (operationMode == false)
+                    clientSendExit();
                 //close threads when program ends
                 closeServer();
                 if (threadClient != null) threadClient.Abort();
@@ -540,7 +543,7 @@ namespace MyKaTalk
             }
             catch (Exception e1)
             {
-                MessageBox.Show(e1.ToString() + e1.Message);
+                MessageBox.Show(e1.Message);
                 Initialization();
             }
         }
@@ -643,9 +646,20 @@ namespace MyKaTalk
                 AddText($"{clientName}이/가 퇴실하였습니다\r\n", Color.Silver);
             }
 
-            //int itemIdx = sbClientList.DropDownItems.IndexOfKey(clientName);
-            //sbClientList.DropDownItems.RemoveAt(itemIdx);
-            sbClientList.DropDownItems.RemoveByKey(clientName);
+            List<int> removeIdx = new List<int>(); //제거할 인덱스 리스트
+            // for 문으로 드랍다운아이템을 전부 조회하고 해당 아이템을 삭제
+            for(int i = 0; i < sbClientList.DropDownItems.Count; i++)
+            {
+                
+                if(sbClientList.DropDownItems[i].Text == clientName)
+                {
+                    removeIdx.Add(i);
+                }
+            }
+            foreach(int idx in removeIdx)
+            {
+                sbClientList.DropDownItems.RemoveAt(idx);
+            }
         }
 
         void mnCurrTime_Click(object sender, EventArgs e)
@@ -721,17 +735,22 @@ namespace MyKaTalk
                 tbOutput.Text += "";
         }
 
-        // 퇴실 버튼: 오늘 날짜 칼럼에 기록이 있으면 퇴실 신호를 전송
-        private void mnExitClass_Click(object sender, EventArgs e)
+        void clientSendExit()
         {
             if (sock == null) return;
             // 서버 끊기면 알아서 사리기
             string str = $"/EXIT:{sUID}"; //EXIT 명령어 + 사용자명
             byte[] bArr = Encoding.Default.GetBytes(str);
-            if(isAlive(sock))
+            if (isAlive(sock))
                 sock.Send(bArr);
             // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
             AddText("퇴실했습니다\r\n", Color.Silver);
+        }
+
+        // 퇴실 버튼: 오늘 날짜 칼럼에 기록이 있으면 퇴실 신호를 전송
+        private void mnExitClass_Click(object sender, EventArgs e)
+        {
+            clientSendExit();
         }
 
         private void fsms_Click(object sender, EventArgs e)
