@@ -124,7 +124,7 @@ namespace MyKaTalk
                         object[] obj = { str, col };
                         Invoke(cb, obj);
                     }
-                    else
+                    else if(tbInput != null)
                     {
                         tbOutput.SelectionColor = col;
                         tbOutput.AppendText(str); // AppendText로 수정 //오토스크롤되고
@@ -134,7 +134,7 @@ namespace MyKaTalk
             }
             catch (Exception e1)
             {
-                MessageBox.Show(e1.Message);
+                //MessageBox.Show(e1.Message);
             }
         }       
        
@@ -150,7 +150,7 @@ namespace MyKaTalk
             else
             {
                 sbClientList.DropDownItems.Add(str);
-                //sbClientList.Text = str;//
+                sbClientList.Text = str;
             }
 
         }
@@ -179,6 +179,7 @@ namespace MyKaTalk
             }
         }
 
+        //여기엔 isAlive가 없어도 되긴 한데..
         void ServerProcess() // 서버 세션 프로세스
         {
             byte[] buf = new byte[100];
@@ -240,7 +241,7 @@ namespace MyKaTalk
                         }
                         else if (msg.StartsWith("/EXIT:"))
                         {
-                            checkExitClass(msg);
+                            checkExitClass(msg); break;
                         }
                         else
                         {
@@ -251,7 +252,8 @@ namespace MyKaTalk
                             TcpClient tp = tcp[k].tp;
                             if (k != i)
                             {
-                                tp.Client.Send(Encoding.Default.GetBytes(msg));
+                                if(isAlive(tp.Client))
+                                    tp.Client.Send(Encoding.Default.GetBytes(msg));
                             }
                         }
                     }
@@ -292,12 +294,12 @@ namespace MyKaTalk
                         //if (sock == null)
                         //if (sock.Available > 0) //if문 아규먼트도 서순이 존재함
                         MessageBox.Show("Server와의 연결이 끊어졌습니다.");
-                        break;                    // Server 연결된 상태에서 Server 끄고 Client 메시지 던지면 socket null로 탈출하는 것 방지
+                        break;  // Server 연결된 상태에서 Server 끄고 Client 메시지 던지면 socket null로 탈출하는 것 방지
                     }
                 }
                 catch (Exception e1)
-                {                                           // 
-                    MessageBox.Show(e1.Message);
+                {                                           
+                    //MessageBox.Show(e1.Message);
                     threadClient.Abort();
                 }
                 Thread.Sleep(100);
@@ -384,7 +386,8 @@ namespace MyKaTalk
                 threadRead.Start();
 
                 AddText($"Server started @ Port: [{serverPort}]\r\n", Color.Blue);
-                AddLabel("모두에게");                                           // server 되면 생기게 위로 옮김
+                AddLabel("모두에게");
+                addDate(); //요걸로 날짜 칼럼 신설
             }
             catch (Exception e2)
             {
@@ -487,33 +490,34 @@ namespace MyKaTalk
             sbClientList.Text = e.ClickedItem.Text;
         }
 
-        private void puSend2Server_Click(object sender, EventArgs e)
-        {
-            if (sock == null) return;
-            // 서버 끊기면 알아서 사리기
-            string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
-            byte[] bArr = Encoding.Default.GetBytes(str);
-            sock.Send(bArr); // Client -> Server
-        }
+        //private void puSend2Server_Click(object sender, EventArgs e)
+        //{
+        //    if (sock == null) return;
+        //    // 서버 끊기면 알아서 사리기
+        //    string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
+        //    byte[] bArr = Encoding.Default.GetBytes(str);
+        //    sock.Send(bArr); // Client -> Server
+        //}
 
-        //요거 동작 안하네;;
-        private void puSend2Client_Click(object sender, EventArgs e)
-        {
-            string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
-            byte[] bArr = Encoding.Default.GetBytes(str);
-            //sbLabel에서 선택된 Client로 보내기 전에 전부 보내기?
-            for (int i = 0; i < tcp.Count; i++)
-            {
-                if( isAlive(tcp[i].tp.Client) ) // 모두 보내기 기능이라던가 오류 발생 차단
-                    tcp[i].tp.Client.Send(bArr); // Server -> Client
-            }
-        }
+        ////요거 동작 안하네;;
+        //private void puSend2Client_Click(object sender, EventArgs e)
+        //{
+        //    string str = (tbInput.SelectedText == "") ? tbInput.Text : tbInput.SelectedText;
+        //    byte[] bArr = Encoding.Default.GetBytes(str);
+        //    //sbLabel에서 선택된 Client로 보내기 전에 전부 보내기?
+        //    for (int i = 0; i < tcp.Count; i++)
+        //    {
+        //        if( isAlive(tcp[i].tp.Client) ) // 모두 보내기 기능이라던가 오류 발생 차단
+        //            tcp[i].tp.Client.Send(bArr); // Server -> Client
+        //    }
+        //}
 
 
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
             {
+                //clientMode 일 경우 EXIT 보내고 종료
                 //close threads when program ends
                 closeServer();
                 if (threadClient != null) threadClient.Abort();
@@ -557,10 +561,11 @@ namespace MyKaTalk
                             if(isAlive(tp.Client)) // 살아있다면..
                             {
                                 tp.Client.Send(Encoding.Default.GetBytes($" KOSTA : {tbInput.Text.Trim()}\r\n"));
-                                AddText($" KOSTA : {tbInput.Text.Trim()}\r\n", Color.Black); // 자기화면에 표시
+                                
                             }                               
                         }
                     }
+                    AddText($" KOSTA : {tbInput.Text.Trim()}\r\n", Color.Black); // 자기화면에 표시
                     tbInput.Text = "";
                 }
                 else // Client Mode
@@ -622,7 +627,7 @@ namespace MyKaTalk
             }
         }
 
-        // 퇴실 확인 기능 
+        // 퇴실 확인 기능 : 서버 단에서 실행되는 함수
         // 핸드셰이크 추가할지도
         void checkExitClass(string msg)
         {
@@ -637,6 +642,10 @@ namespace MyKaTalk
                 sqldb.Run(sql);
                 AddText($"{clientName}이/가 퇴실하였습니다\r\n", Color.Silver);
             }
+
+            //int itemIdx = sbClientList.DropDownItems.IndexOfKey(clientName);
+            //sbClientList.DropDownItems.RemoveAt(itemIdx);
+            sbClientList.DropDownItems.RemoveByKey(clientName);
         }
 
         void mnCurrTime_Click(object sender, EventArgs e)
@@ -719,7 +728,8 @@ namespace MyKaTalk
             // 서버 끊기면 알아서 사리기
             string str = $"/EXIT:{sUID}"; //EXIT 명령어 + 사용자명
             byte[] bArr = Encoding.Default.GetBytes(str);
-            sock.Send(bArr);
+            if(isAlive(sock))
+                sock.Send(bArr);
             // 요 앞에 주고 받는 시퀀스가 있으면 좋지만 당장은 패스..
             AddText("퇴실했습니다\r\n", Color.Silver);
         }
@@ -741,32 +751,33 @@ namespace MyKaTalk
                     {
                         for (int i = 0; i < tcp.Count; i++)
                         {
-                            tcp[i].tp.Client.Send(Encoding.Default.GetBytes($"File | {Filename} | 서버로부터 파일전송입니다.\r\n"));
+                            if(isAlive(tcp[i].tp.Client))
+                                tcp[i].tp.Client.Send(Encoding.Default.GetBytes($"File | {Filename} | 서버로부터 파일전송입니다.\r\n"));
                         }
                         for (int i = 0; i < tcp.Count; i++)
                         {
-                            tcp[i].tp.Client.SendFile(sendFile);
+                            if(isAlive(tcp[i].tp.Client))
+                                tcp[i].tp.Client.SendFile(sendFile);
                         }
                     }
                 }
                 else
                 {
-                    sock.Send(Encoding.Default.GetBytes($"File | {Filename} | 클라이언트로부터 파일전송입니다.\r\n"));
-
-                    if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    if (isAlive(sock))
                     {
-                        sock.SendFile(sendFile);
+                        sock.Send(Encoding.Default.GetBytes($"File | {Filename} | 클라이언트로부터 파일전송입니다.\r\n"));
+                        if (MessageBox.Show("전송 하시겠습니까?", "파일 전송", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                        {
+                            if (isAlive(sock))
+                                sock.SendFile(sendFile);
+                        }
                     }
+                       
+
+                    
                 }
             }
         }
 
-        private void tbInput_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                tbInput.Text = ""; 
-            }
-        }
     }
 }
