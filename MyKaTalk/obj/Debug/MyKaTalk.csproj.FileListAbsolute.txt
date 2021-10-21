@@ -83,3 +83,20 @@ C:\Users\KOSTA\Desktop\새 폴더\MyKaTalk\obj\Debug\MyKaTalk.csproj.GenerateRes
 C:\Users\KOSTA\Desktop\새 폴더\MyKaTalk\obj\Debug\MyKaTalk.csproj.CoreCompileInputs.cache
 C:\Users\KOSTA\Desktop\새 폴더\MyKaTalk\obj\Debug\MyKaTalk.exe
 C:\Users\KOSTA\Desktop\새 폴더\MyKaTalk\obj\Debug\MyKaTalk.pdb
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.exe.config
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.exe
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\MyKaTalk.pdb
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\bin\Debug\myLibrary.pdb
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.AssemblyReference.cache
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmAddStudent.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmDB.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmClient.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmMain.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmNetConfig.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.frmServer.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.Properties.Resources.resources
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.GenerateResource.cache
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.CoreCompileInputs.cache
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.csproj.CopyComplete
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.exe
+C:\Users\snows\source\repos\Project_AttendApp\MyKaTalk\obj\Debug\MyKaTalk.pdb

@@ -79,7 +79,6 @@ namespace MyKaTalk
             this.fsms});
             this.mainMenu.Location = new System.Drawing.Point(0, 0);
             this.mainMenu.Name = "mainMenu";
-            this.mainMenu.Padding = new System.Windows.Forms.Padding(6, 2, 0, 2);
             this.mainMenu.Size = new System.Drawing.Size(368, 28);
             this.mainMenu.TabIndex = 0;
             this.mainMenu.Text = "menuStrip1";
@@ -246,7 +245,7 @@ namespace MyKaTalk
             this.tbInput.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.tbInput.Multiline = true;
             this.tbInput.Name = "tbInput";
-            this.tbInput.Size = new System.Drawing.Size(361, 186);
+            this.tbInput.Size = new System.Drawing.Size(361, 189);
             this.tbInput.TabIndex = 3;
             this.tbInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.tbInput_KeyDown);
             // 
@@ -306,6 +305,7 @@ namespace MyKaTalk
             this.tbOutput.Size = new System.Drawing.Size(364, 309);
             this.tbOutput.TabIndex = 0;
             this.tbOutput.Text = "";
+            this.tbOutput.LinkClicked += new System.Windows.Forms.LinkClickedEventHandler(this.tbOutput_LinkClicked);
             // 
             // openFileDialog1
             // 
